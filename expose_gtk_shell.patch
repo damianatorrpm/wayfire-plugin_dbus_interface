@@ -1,0 +1,72 @@
+From 1535b07e01843bada846cf172235fb755ef389c1 Mon Sep 17 00:00:00 2001
+From: Damian Ivanov <damianatorrpm@gmail.com>
+Date: Wed, 20 May 2020 15:55:44 +0300
+Subject: [PATCH 1/3] Update view.hpp
+
+---
+ src/api/wayfire/view.hpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/api/wayfire/view.hpp b/src/api/wayfire/view.hpp
+index f10fc19c..78cd79c5 100644
+--- a/src/api/wayfire/view.hpp
++++ b/src/api/wayfire/view.hpp
+@@ -264,6 +264,9 @@ class view_interface_t : public surface_interface_t, public wf::object_base_t
+     /** Damage the whole view and add the damage to its output */
+     virtual void damage();
+ 
++
++    /** @return the app-id from gtk-shell of the view */
++    virtual std::string get_app_id_gtk_shell() { return ""; }
+     /** @return the app-id of the view */
+     virtual std::string get_app_id() { return ""; }
+     /** @return the title of the view */
+
+From 133f61f0d21bbd65fb94ce7388498a31225089a5 Mon Sep 17 00:00:00 2001
+From: Damian Ivanov <damianatorrpm@gmail.com>
+Date: Wed, 20 May 2020 15:59:31 +0300
+Subject: [PATCH 2/3] Update view-impl.hpp
+
+---
+ src/view/view-impl.hpp | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/view/view-impl.hpp b/src/view/view-impl.hpp
+index e8fac795..b72fceba 100644
+--- a/src/view/view-impl.hpp
++++ b/src/view/view-impl.hpp
+@@ -95,6 +95,7 @@ class wlr_view_t :
+     /* Functions which are shell-independent */
+     virtual void set_role(view_role_t new_role) override final;
+ 
++    virtual std::string get_app_id_gtk_shell() override final;
+     virtual std::string get_app_id() override final;
+     virtual std::string get_title() override final;
+     virtual wf::region_t get_transformed_opaque_region() override;
+
+From 6590f7693a3b7df0b6c368cdadc7c15f87048a58 Mon Sep 17 00:00:00 2001
+From: Damian Ivanov <damianatorrpm@gmail.com>
+Date: Wed, 20 May 2020 16:03:26 +0300
+Subject: [PATCH 3/3] Update view-impl.cpp
+
+---
+ src/view/view-impl.cpp | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/src/view/view-impl.cpp b/src/view/view-impl.cpp
+index f8a21511..46aeb596 100644
+--- a/src/view/view-impl.cpp
++++ b/src/view/view-impl.cpp
+@@ -36,6 +36,12 @@ void wf::wlr_view_t::handle_app_id_changed(std::string new_app_id)
+     emit_signal("app-id-changed", &data);
+ }
+ 
++std::string wf::wlr_view_t::get_app_id_gtk_shell()
++{
++    return wf_gtk_shell_get_custom_app_id(
++        wf::get_core_impl().gtk_shell, surface->resource);
++}
++
+ std::string wf::wlr_view_t::get_app_id()
+ {
+     return this->app_id;

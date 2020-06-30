@@ -1,0 +1,12 @@
+diff -ur damianatorrpm-wayfire/src/core/core.cpp damianatorrpm-wayfire_desired_layer/src/core/core.cpp
+--- damianatorrpm-wayfire/src/core/core.cpp	2020-05-22 22:47:57.033780763 +0300
++++ damianatorrpm-wayfire_desired_layer/src/core/core.cpp	2020-05-23 03:17:54.383619855 +0300
+@@ -635,6 +635,7 @@
+     new_output->workspace->add_view(v,
+         v->minimized ? wf::LAYER_MINIMIZED : wf::LAYER_WORKSPACE);
+     new_output->focus_view(v);
++    this->emit_signal("view-moved-to-output", &data);
+ }
+ 
+ wf::compositor_core_t::compositor_core_t() {};
+
