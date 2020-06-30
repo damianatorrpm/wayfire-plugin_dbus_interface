@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<wayfire>
+	<plugin name="dbus_interface">
+	<_short>DBus Interface </_short>
+ 	<_long>DBus Interface @ org.wayland.compositor </_long>
+	<category>Desktop</category>
+	<option name="test-string" type="string">
+		<_short>Test string option</_short>
+		<default>My test value</default>
+	</option>
+	</plugin>
+</wayfire>
