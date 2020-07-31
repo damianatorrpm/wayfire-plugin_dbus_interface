@@ -47,35 +47,6 @@ extern "C"
 
 class dbus_interface_t
 {
-    /*
-     * Another list of TODO's
-     * not mentioned in other comments:
-     * -> Add xprop like feature
-     * -> add function to screenshoot(view_id)
-     * -> add xdotools like utility
-     *    core.warp_cursor can emit a click
-     *    virtual-pointer protocol
-     * -> investigate if grab_interface/capabilities are required
-     * -> add function to constrain pointer to view
-     * -> the connected_outputs may have bugs
-     * -> set dbus_path as /org/wayland/compositor/$wayland_display/
-     *    for nested wayfire or wayfire on another TTY
-     * -> local_thread_show_desktop
-     *    could have false argument implement to restore
-     *    views unless a different view has appeared on output
-     * -> replace usages of 'auto' used for prototyping
-     * -> add details to touch event
-     * -> clean unload
-     *    no signals are disconnected
-     *    occasional crashes on frequent enable/disable
-     *
-     * A list of some unused signals
-     * -> output wm-focus-request
-     * -> output view-focused
-     * -> output fullscreen-layer-focused
-     * -> output set-workspace-request
-     */
-
   public:
     /************* Connect all signals for already existing objects **************/
     dbus_interface_t()
@@ -220,9 +191,6 @@ class dbus_interface_t
             button_state = wlr_signal->state;
             button = wlr_signal->button;
             button_released = (button_state == WLR_BUTTON_RELEASED);
-            // Unused properties of wlr_event_pointer_button signal
-            // struct wlr_input_device *device;
-            // uint32_t time_msec;
 
             signal_data = g_variant_new("(ddub)",
                                         cursor_position.x,
