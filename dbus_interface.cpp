@@ -58,6 +58,9 @@ class dbus_interface_t
             output->connect_signal("view-mapped",
                                    &output_view_added);
 
+            output->connect_signal("wm-actions-view-above-changed",
+                                   &on_view_keep_above);
+
             output->connect_signal("output-configuration-changed",
                                    &output_configuration_changed);
 
@@ -797,6 +800,32 @@ class dbus_interface_t
     };
 
     /***
+     * The wm-actions plugin changed the above_layer
+     * state of a view.
+     ***/
+    wf::signal_connection_t on_view_keep_above
+    {
+        [=] (wf::signal_data_t* data)
+        {
+            GVariant* signal_data;
+            wayfire_view view;
+
+            view = wf::get_signaled_view(data);
+
+            if (!view)
+            {
+                return;
+            }
+
+            signal_data = g_variant_new("(ub)",
+                                        view->get_id(),
+                                        view->has_data("wm-actions-above"));
+            g_variant_ref(signal_data);
+            bus_emit_signal("view_keep_above_changed", signal_data);
+        }
+    };
+
+    /***
      * The decoration of a view has changed
      ***/
     wf::signal_connection_t output_view_decoration_changed
@@ -887,6 +916,9 @@ class dbus_interface_t
             {
                 return;
             }
+
+            output->connect_signal("wm-actions-view-above-changed",
+                                   &on_view_keep_above);
 
             output->connect_signal("view-fullscreen-request",
                                    &view_fullscreen_changed);
