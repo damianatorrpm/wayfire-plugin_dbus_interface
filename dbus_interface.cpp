@@ -79,7 +79,7 @@ class dbus_interface_t
             output->connect_signal("view-change-viewport",
                                    &view_workspaces_changed);
 
-            output->connect_signal("viewport-changed",
+            output->connect_signal("workspace-changed",
                                    &output_workspace_changed);
 
             output->connect_signal("view-layer-attached",
@@ -941,7 +941,7 @@ class dbus_interface_t
             output->connect_signal("view-change-viewport",
                                    &view_workspaces_changed);
 
-            output->connect_signal("viewport-changed",
+            output->connect_signal("workspace-changed",
                                    &output_workspace_changed);
 
             output->connect_signal("view-self-request-focus",
