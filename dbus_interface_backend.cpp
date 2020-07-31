@@ -122,15 +122,48 @@ get_output_from_output_id (uint output_id)
 }
 
 static void
-local_thread_request_view_sticky (void* data)
+local_thread_change_view_above (void* data)
 {
+    uint action;
+    uint view_id;
+    bool is_above;
     wayfire_view view;
     wf::output_t* output;
-    // wm_actions_above_signal* data;
-    view = get_view_from_view_id(queued_view_id);
+    wf::_view_signal signal_data;
+
+    g_variant_get((GVariant*)data, "(uu)", &view_id, &action);
+    view = get_view_from_view_id(view_id);
+
+    if (!view)
+    {
+        return;
+    }
+
+    is_above = view->has_data("wm-actions-above");
     output = view->get_output();
-    // data.view = view;
-    // output->emit_signal("wm-actions-view-above", data);
+
+    if (!output)
+    {
+        return;
+    }
+
+    if ((action == 0) && is_above)
+    {
+        signal_data.view = view;
+        output->emit_signal("wm-actions-view-above", &signal_data);
+    }
+    else
+    if ((action == 1) && !is_above)
+    {
+        signal_data.view = view;
+        output->emit_signal("wm-actions-view-above", &signal_data);
+    }
+    else
+    if (action == 2)
+    {
+        signal_data.view = view;
+        output->emit_signal("wm-actions-view-above", &signal_data);
+    }
 }
 
 static void
@@ -538,9 +571,9 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='view_id' direction='in'/>"
     "      <arg type='u' name='output' direction='out'/>"
     "    </method>"
-    "    <method name='query_view_layer'>"
+    "    <method name='query_view_above'>"
     "      <arg type='u' name='view_id' direction='in'/>"
-    "      <arg type='u' name='layer' direction='out'/>"
+    "      <arg type='b' name='above' direction='out'/>"
     "    </method>"
     "    <method name='query_view_workspaces'>"
     "      <arg type='u' name='view_id' direction='in'/>"
@@ -625,9 +658,9 @@ const gchar introspection_xml [] =
     "      <arg type='i' name='workspace_horizontal' direction='in'/>"
     "      <arg type='i' name='workspace_vertical' direction='in'/>"
     "    </method>"
-    "    <method name='request_view_sticky'>"
+    "    <method name='change_view_above'>"
     "      <arg type='u' name='view_id' direction='in'/>"
-    "      <arg type='b' name='sticky' direction='in'/>"
+    "      <arg type='u' name='action' direction='in'/>"
     "    </method>"
     "    <method name='show_desktop'>"
     "      <arg type='b' name='show' direction='in'/>"
@@ -719,9 +752,9 @@ const gchar introspection_xml [] =
     "    <signal name='view_focus_changed'>"
     "      <arg type='u' name='view_id'/>"
     "    </signal>"
-    "    <signal name='view_layer_changed'>"
+    "    <signal name='view_keep_above_changed'>"
     "      <arg type='u' name='view_id'/>"
-    "      <arg type='u' name='layer'/>"
+    "      <arg type='b' name='above'/>"
     "    </signal>"
     /***
      * Output related signals, emitted from various
@@ -771,29 +804,12 @@ handle_method_call (GDBusConnection* connection,
 {
     LOG(wf::log::LOG_LEVEL_DEBUG, "handle_method_call bus called", method_name);
 
-    if (g_strcmp0(method_name, "request_view_sticky") == 0)
+    if (g_strcmp0(method_name, "change_view_above") == 0)
     {
-        uint view_id;
-        bool sticky;
-        g_variant_get(parameters, "(ub)", &view_id, &sticky);
-
-        queued_view_id = view_id;
-        queued_view_param = sticky;
-        wayfire_view view = get_view_from_view_id(view_id);
-
-        /*************************************************************
-        * For some glorious reasons if parameters is passed to
-        * local_thread_request_view_sticky data will be invalid
-        *
-        * Beware of crashes if before a view is made sticky or not sticky
-        * if another output is focused or some other stuff happens
-        * compositor might crash... so it is not a good test case
-        * for doing stuff very fast while doing other stuff
-        *************************************************************/
-
+        g_variant_ref(parameters);
         wl_event_loop_add_idle(core.ev_loop,
-                               local_thread_request_view_sticky,
-                               nullptr);
+                               local_thread_change_view_above,
+                               static_cast<void*> (parameters));
 
         g_dbus_method_invocation_return_value(invocation,
                                               nullptr);
@@ -1657,26 +1673,31 @@ handle_method_call (GDBusConnection* connection,
         return;
     }
     else
-    if (g_strcmp0(method_name, "query_view_layer") == 0)
+    if (g_strcmp0(method_name, "query_view_above") == 0)
     {
         wayfire_view view;
         uint view_id;
-        uint response = 0;
+        bool above;
 
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
+        above = false;
 
         if (view)
         {
             if (view->has_data("wm-actions-above"))
             {
-                response = 1;
+                above = true;
             }
+        }
+        else
+        {
+            LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_above no view");
         }
 
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(u)",
-                                                            response));
+                                              g_variant_new("(b)",
+                                                            above));
 
         return;
     }
