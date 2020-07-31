@@ -1,6 +1,7 @@
 DBus Wayfire plugin
 
 Authors: Damian Ivanov <damianatorrpm@gmail.com>
+
 Contributors: Scott Moreau <soureau@gmail.com>
 
 ### Coding style
