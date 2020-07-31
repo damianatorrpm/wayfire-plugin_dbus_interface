@@ -94,12 +94,6 @@ class dbus_interface_t
             output->connect_signal("view-fullscreen-request",
                                    &view_fullscreen_changed);
 
-            output->connect_signal("view-self-request-focus",
-                                   &view_self_request_focus);
-
-            output->connect_signal("view-hints-changed",
-                                   &view_hints_changed);
-
             LOG(wf::log::LOG_LEVEL_DEBUG, "output connected");
             connected_wf_outputs.insert(output);
         }
@@ -123,6 +117,13 @@ class dbus_interface_t
         }
 
         /****************** Connect core signals ***********************/
+
+        core.connect_signal("view-hints-changed",
+                            &view_hints_changed);
+
+        core.connect_signal("view-self-request-focus",
+                            &view_self_request_focus);
+
         core.connect_signal("view-pre-moved-to-output",
                             &view_output_move_requested);
 
@@ -943,12 +944,6 @@ class dbus_interface_t
 
             output->connect_signal("workspace-changed",
                                    &output_workspace_changed);
-
-            output->connect_signal("view-self-request-focus",
-                                   &view_self_request_focus);
-
-            output->connect_signal("view-hints-changed",
-                                   &view_hints_changed);
 
             output->connect_signal("view-resize-request",
                                    &output_view_resizing);
