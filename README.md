@@ -1,4 +1,5 @@
 DBus Wayfire plugin
+Currently requires: https://github.com/WayfireWM/wayfire/pull/645
 
 Authors: Damian Ivanov <damianatorrpm@gmail.com>
 
