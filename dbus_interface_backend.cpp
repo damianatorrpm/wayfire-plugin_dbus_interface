@@ -150,19 +150,19 @@ local_thread_change_view_above (void* data)
     if ((action == 0) && is_above)
     {
         signal_data.view = view;
-        output->emit_signal("wm-actions-view-above", &signal_data);
+        output->emit_signal("wm-actions-toggle-above", &signal_data);
     }
     else
     if ((action == 1) && !is_above)
     {
         signal_data.view = view;
-        output->emit_signal("wm-actions-view-above", &signal_data);
+        output->emit_signal("wm-actions-toggle-above", &signal_data);
     }
     else
     if (action == 2)
     {
         signal_data.view = view;
-        output->emit_signal("wm-actions-view-above", &signal_data);
+        output->emit_signal("wm-actions-toggle-above", &signal_data);
     }
 }
 
