@@ -58,7 +58,7 @@ class dbus_interface_t
             output->connect_signal("view-mapped",
                                    &output_view_added);
 
-            output->connect_signal("wm-actions-view-above-changed",
+            output->connect_signal("wm-actions-above-changed",
                                    &on_view_keep_above);
 
             output->connect_signal("output-configuration-changed",
@@ -918,7 +918,7 @@ class dbus_interface_t
                 return;
             }
 
-            output->connect_signal("wm-actions-view-above-changed",
+            output->connect_signal("wm-actions-above-changed",
                                    &on_view_keep_above);
 
             output->connect_signal("view-fullscreen-request",
