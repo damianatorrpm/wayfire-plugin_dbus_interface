@@ -703,6 +703,7 @@ class dbus_interface_t
             }
 
             view->set_activated(true);
+            view->focus_request();
         }
     };
 
