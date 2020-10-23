@@ -698,27 +698,17 @@ class dbus_interface_t
 
             active_output = core.get_active_output();
             view_output = view->get_output();
-
-            if (view_output)
-            {
-                if (view_output != active_output)
-                {
-                    /***
-                     * This is not desired behaviour it
-                     * turns out as some applications misbehave/abuse this
-                     * we use this specifically for one usecase though
-                     * you may want to remove this
-                     * nautilus = app_id
-                     * org.gnome.Nautilus = correct_app_id
-                     ***/
-                     if (view->get_app_id() == "nautilus")
-                     {
-                         core.move_view_to_output(view,
-                                                  active_output,
-                                                  reconfigure);
-                    }
-                }
-            }
+            // it is possible to also change the view''s
+            // output e.g for single window applications
+            // but other applications call sef_request_focus
+            // for other reasons and this would change
+            // it's output where it is completely undesired
+            // if (view_output)
+            // {
+            //     if (view_output != active_output)
+            //     {
+            //     }
+            // }
 
 	    signal->carried_out = true;
             view->set_activated(true);
