@@ -710,7 +710,7 @@ class dbus_interface_t
             //     }
             // }
 
-	    signal->carried_out = true;
+	        signal->carried_out = true;
             view->set_activated(true);
             view->focus_request();
         }
