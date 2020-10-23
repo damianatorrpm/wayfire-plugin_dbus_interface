@@ -121,8 +121,8 @@ class dbus_interface_t
         core.connect_signal("view-hints-changed",
                             &view_hints_changed);
 
-        core.connect_signal("view-self-request-focus",
-                            &view_self_request_focus);
+        core.connect_signal("view-focus-request",
+                            &view_focus_request);
 
         core.connect_signal("view-pre-moved-to-output",
                             &view_output_move_requested);
@@ -668,20 +668,27 @@ class dbus_interface_t
      * Examples:
      *   1) applications that get dbus activated
      *   2) Multiplayer games if game is found.
+     *      (source engine does this)
      ***/
-    wf::signal_connection_t view_self_request_focus
+    wf::signal_connection_t view_focus_request
     {
         [=] (wf::signal_data_t* data)
         {
-            LOG(wf::log::LOG_LEVEL_DEBUG, "view_self_request_focus");
+            LOG(wf::log::LOG_LEVEL_DEBUG, "view_focus_request_signal");
 
             bool reconfigure = true;
-            wf::view_self_request_focus_signal* signal;
+            wf::view_focus_request_signal* signal;
             wayfire_view view;
             wf::output_t* active_output;
             wf::output_t* view_output;
 
-            signal = static_cast<wf::view_self_request_focus_signal*> (data);
+            signal = static_cast<wf::view_focus_request_signal*> (data);
+            if (signal->carried_out)
+                return;
+
+            if (!signal->self_request)
+                return;
+                                
             view = signal->view;
 
             if (!view)
@@ -691,28 +698,19 @@ class dbus_interface_t
 
             active_output = core.get_active_output();
             view_output = view->get_output();
+            // it is possible to also change the view''s
+            // output e.g for single window applications
+            // but other applications call sef_request_focus
+            // for other reasons and this would change
+            // it's output where it is completely undesired
+            // if (view_output)
+            // {
+            //     if (view_output != active_output)
+            //     {
+            //     }
+            // }
 
-            if (view_output)
-            {
-                if (view_output != active_output)
-                {
-                    /***
-                     * This is not desired behaviour it
-                     * turns out as some applications misbehave/abuse this
-                     * we use this specifically for one usecase though
-                     * you may want to remove this
-                     * nautilus = app_id
-                     * org.gnome.Nautilus = correct_app_id
-                     ***/
-                     if (view->get_app_id() == "nautilus")
-                     {
-                         core.move_view_to_output(view,
-                                                  active_output,
-                                                  reconfigure);
-                    }
-                }
-            }
-
+	        signal->carried_out = true;
             view->set_activated(true);
             view->focus_request();
         }
