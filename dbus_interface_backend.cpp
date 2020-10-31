@@ -68,6 +68,7 @@ uint focused_view_id;
 // Not a proper solution
 uint queued_view_id = 0;
 bool queued_view_param = false;
+bool find_view_under_action = false;
 // TODO: Is this the best approach for the lifetime of these objects?
 
 // set fom introspection_xml during acquire_bus()
@@ -493,6 +494,9 @@ const gchar introspection_xml [] =
     "      <arg type='d' name='x_pos' direction='out'/>"
     "      <arg type='d' name='y_pos' direction='out'/>"
     "    </method>"
+    "    <method name='enable_property_mode'>"
+    "      <arg type='b' name='enable' direction='in'/>"
+    "    </method>"    
 
     /************************* Output Methods ************************/
     "    <method name='query_output_ids'>"
@@ -772,7 +776,13 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='output_id'/>"
     "    </signal>"
     "    <signal name='output_configuration_changed'/>"
-
+ 
+     /***
+     * For wf-prop & co
+     ***/
+    "    <signal name='view_pressed'>"
+    "      <arg type='u' name='view_id'/>"   
+    "    </signal>"
     /***
      * Tentative signals
      *  "    <signal name='hotspot_edge_trigger_stop'>"
@@ -953,6 +963,32 @@ handle_method_call (GDBusConnection* connection,
     }
 
     /*************** Non-reffing actions at end ****************/
+    else
+    if (g_strcmp0(method_name, "enable_property_mode") == 0)
+    {
+        bool enable;
+        g_variant_get(parameters, "(b)", &enable);
+        find_view_under_action = enable;
+
+        /**
+         * Eventually store current cursor
+         * and restore it if different from 
+         * "default"
+         */
+        if (enable) 
+        {
+            core.set_cursor("grabbing");
+        }
+        else
+        {
+            core.set_cursor("default");
+        }
+        
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
+
+        return;
+    }
     else
     if (g_strcmp0(method_name, "query_cursor_position") == 0)
     {
