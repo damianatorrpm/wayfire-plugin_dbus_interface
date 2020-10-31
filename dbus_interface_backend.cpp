@@ -968,7 +968,7 @@ handle_method_call (GDBusConnection* connection,
     {
         bool enable;
         g_variant_get(parameters, "(b)", &enable);
-        find_view_under_cursor = enable;
+        find_view_under_action = enable;
 
         /**
          * Eventually store current cursor
@@ -977,11 +977,11 @@ handle_method_call (GDBusConnection* connection,
          */
         if (enable) 
         {
-            core.set_cursor("grabbing")
+            core.set_cursor("grabbing");
         }
         else
         {
-            core.set_cursor("default")
+            core.set_cursor("default");
         }
         
         g_dbus_method_invocation_return_value(invocation,
