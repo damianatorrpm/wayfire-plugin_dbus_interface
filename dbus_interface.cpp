@@ -196,6 +196,16 @@ class dbus_interface_t
             button = wlr_signal->button;
             button_released = (button_state == WLR_BUTTON_RELEASED);
 
+            if (find_view_under_action)
+            {
+                GVariant* _signal_data;
+                wayfire_view view; 
+                view = core.get_view_at(cursor_position);
+                _signal_data = g_variant_new("(u)", view_id);
+                g_variant_ref(_signal_data);
+                bus_emit_signal("view_pressed", _signal_data);
+            }
+
             signal_data = g_variant_new("(ddub)",
                                         cursor_position.x,
                                         cursor_position.y,
@@ -208,6 +218,7 @@ class dbus_interface_t
 
     /***
      * A tablet button is interacted with
+     * TODO: do more for touch events
      ***/
     wf::signal_connection_t tablet_button_signal
     {
