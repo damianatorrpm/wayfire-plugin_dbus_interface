@@ -199,7 +199,7 @@ class dbus_interface_t
             if (find_view_under_action && button_released)
             {
                 GVariant* _signal_data;
-                wayfire_view view; 
+                wayfire_view view;
                 view = core.get_view_at(cursor_position);
                 _signal_data = g_variant_new("(u)", view->get_id());
                 g_variant_ref(_signal_data);
@@ -695,11 +695,15 @@ class dbus_interface_t
 
             signal = static_cast<wf::view_focus_request_signal*> (data);
             if (signal->carried_out)
+            {
                 return;
+            }
 
             if (!signal->self_request)
+            {
                 return;
-                                
+            }
+
             view = signal->view;
 
             if (!view)
@@ -716,12 +720,12 @@ class dbus_interface_t
             // it's output where it is completely undesired
             // if (view_output)
             // {
-            //     if (view_output != active_output)
-            //     {
-            //     }
+            // if (view_output != active_output)
+            // {
+            // }
             // }
 
-	        signal->carried_out = true;
+            signal->carried_out = true;
             view->set_activated(true);
             view->focus_request();
         }
@@ -932,10 +936,11 @@ class dbus_interface_t
             GVariant* signal_data;
 
             output = get_signaled_output(data);
-            if (!output) 
+            if (!output)
             {
                 return;
             }
+
             auto search = connected_wf_outputs.find(output);
 
             if (search != connected_wf_outputs.end())
@@ -1004,10 +1009,11 @@ class dbus_interface_t
             wf::output_t* output;
 
             output = get_signaled_output(data);
-            if (!output) 
+            if (!output)
             {
                 return;
             }
+
             auto search = connected_wf_outputs.find(output);
 
             if (search != connected_wf_outputs.end())

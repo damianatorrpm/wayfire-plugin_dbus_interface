@@ -496,7 +496,7 @@ const gchar introspection_xml [] =
     "    </method>"
     "    <method name='enable_property_mode'>"
     "      <arg type='b' name='enable' direction='in'/>"
-    "    </method>"    
+    "    </method>"
 
     /************************* Output Methods ************************/
     "    <method name='query_output_ids'>"
@@ -776,12 +776,12 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='output_id'/>"
     "    </signal>"
     "    <signal name='output_configuration_changed'/>"
- 
-     /***
+
+    /***
      * For wf-prop & co
      ***/
     "    <signal name='view_pressed'>"
-    "      <arg type='u' name='view_id'/>"   
+    "      <arg type='u' name='view_id'/>"
     "    </signal>"
     /***
      * Tentative signals
@@ -972,10 +972,10 @@ handle_method_call (GDBusConnection* connection,
 
         /**
          * Eventually store current cursor
-         * and restore it if different from 
+         * and restore it if different from
          * "default"
          */
-        if (enable) 
+        if (enable)
         {
             core.set_cursor("grabbing");
         }
@@ -983,7 +983,7 @@ handle_method_call (GDBusConnection* connection,
         {
             core.set_cursor("default");
         }
-        
+
         g_dbus_method_invocation_return_value(invocation,
                                               nullptr);
 
@@ -1262,6 +1262,7 @@ handle_method_call (GDBusConnection* connection,
         uint view_id;
         gchar* response = "nullptr";
         wayfire_view view;
+        bool free_response = false;
 
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
@@ -1269,21 +1270,26 @@ handle_method_call (GDBusConnection* connection,
         if (view)
         {
             auto wlr_surf = view->get_wlr_surface();
+            g_assert(wlr_surf != NULL);
+
             if (wlr_surface_is_xwayland_surface(wlr_surf))
             {
                 struct wlr_xwayland_surface* xsurf;
                 xsurf = wlr_xwayland_surface_from_wlr_surface(wlr_surf);
+                g_assert(xsurf != NULL);
                 std::string wm_name_app_id = nonull(xsurf->instance);
                 response = g_strdup_printf(wm_name_app_id.c_str());
+                free_response = true;
             }
+        }
+
+        if (free_response)
+        {
+            g_free(response);
         }
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
-        if (view)
-        {
-            g_free(response);
-        }
 
         return;
     }
