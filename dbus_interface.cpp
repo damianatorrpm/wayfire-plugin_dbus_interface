@@ -932,6 +932,10 @@ class dbus_interface_t
             GVariant* signal_data;
 
             output = get_signaled_output(data);
+            if (!output) 
+            {
+                return;
+            }
             auto search = connected_wf_outputs.find(output);
 
             if (search != connected_wf_outputs.end())
@@ -1000,6 +1004,10 @@ class dbus_interface_t
             wf::output_t* output;
 
             output = get_signaled_output(data);
+            if (!output) 
+            {
+                return;
+            }
             auto search = connected_wf_outputs.find(output);
 
             if (search != connected_wf_outputs.end())
