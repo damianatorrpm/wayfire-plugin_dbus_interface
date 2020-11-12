@@ -54,10 +54,8 @@ extern "C"
 
 // #include <wayfire/plugins/wm-actions/wm-actions-signals.hpp>
 
-wf::option_wrapper_t<bool> geometry_signal_enabled
-{
-    "dbus_interface/geometry_signal"
-};
+wf::option_wrapper_t<bool> geometry_signal_enabled{
+    "dbus_interface/geometry_signal"};
 wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
 wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
@@ -315,11 +313,12 @@ local_thread_peek_view (void* data)
 {
     uint view_id;
     bool peek;
+    wayfire_view current_focus_view;
     wayfire_view peeked_view;
 
     g_variant_get((GVariant*)data, "(ub)", &view_id, &peek);
     peeked_view = get_view_from_view_id(view_id);
-
+    current_focus_view = core.get_cursor_focus_view();
     if (peek)
     {
         for (wayfire_view view : core.get_all_views())
@@ -328,28 +327,38 @@ local_thread_peek_view (void* data)
             {
                 continue;
             }
-            if (view->role != wf::VIEW_ROLE_TOPLEVEL || !view->is_mapped())
-            {
-                continue;
-            }
 
             if (view->get_id() == view_id)
             {
-                if (view->minimized)
-                {
-                    view->store_data(std::make_unique<wf::custom_data_t> (),
-                                     "dbus-peek-view-was-minimized");
-                    view->set_minimized(false);
-                }
-
                 continue;
             }
+
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
+            {
+                continue;
+            }
+
             else
             {
                 view->store_data(std::make_unique<wf::custom_data_t> (),
                                  "dbus-peek-restore-view");
                 view->set_minimized(true);
             }
+        }
+
+        current_focus_view.store_data(std::make_unique<wf::custom_data_t> (),
+                                      "dbus-peek-last-focus-view");
+
+        if (peeked_view->minimized)
+        {
+            view->store_data(std::make_unique<wf::custom_data_t> (),
+                             "dbus-peek-view-was-minimized");
+            view->set_minimized(false);
+            view->focus_request();
+        }
+        else
+        {
+            view->focus_request();
         }
     }
     else
@@ -361,11 +370,11 @@ local_thread_peek_view (void* data)
                 continue;
             }
 
-            if (view->role != wf::VIEW_ROLE_TOPLEVEL || !view->is_mapped())
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
             {
                 continue;
             }
-            
+
             if (view->has_data("dbus-peek-view-was-minimized"))
             {
                 view->erase_data("dbus-peek-view-was-minimized");
@@ -376,7 +385,14 @@ local_thread_peek_view (void* data)
             if (view->has_data("dbus-peek-restore-view"))
             {
                 view->erase_data("dbus-peek-restore-view");
-                view->set_minimized(true);
+                view->set_minimized(false);
+            }
+            else
+            if (view->has_data("dbus-peek-last-focus-view"))
+            {
+                view->erase_data("dbus-peek-last-focus-view");
+                view->set_minimized(false);
+                view->focus_request();
             }
         }
     }
@@ -1299,8 +1315,7 @@ handle_method_call (GDBusConnection* connection,
     if (g_strcmp0(method_name, "query_workspace_grid_size") == 0)
     {
         wf::dimensions_t workspaces;
-        workspaces = core.get_active_output()->workspace->
-            get_workspace_grid_size();
+        workspaces = core.get_active_output()->workspace->get_workspace_grid_size();
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(ii)",
@@ -2333,11 +2348,8 @@ dbus_thread_exec_function (gpointer user_data)
      * Event loop is killed, probably dbus plugin is
      * being unloaded
      */
-    LOG(wf::log::LOG_LEVEL_DEBUG, "dbus_thread_exec_function end");
-
-    g_main_loop_unref(dbus_event_loop);
-    g_main_context_pop_thread_default(dbus_context);
-    g_main_context_unref(dbus_context);
+    LOG(wf::log::LOG_LEVEL_DEBUG, "If you are here either dbus plugin");
+    LOG(wf::log::LOG_LEVEL_DEBUG, "is being deactivated or this is a bug.");
 
     return nullptr;
 }

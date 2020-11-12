@@ -168,14 +168,16 @@ class dbus_interface_t
         g_bus_unown_name(owner_id);
         g_main_loop_quit(dbus_event_loop);
         g_dbus_node_info_unref(introspection_data);
+        g_main_loop_unref(dbus_event_loop);
+        g_main_context_pop_thread_default(dbus_context);
+        g_main_context_unref(dbus_context);
     }
 
     /******************************View Related Slots***************************/
     /***
      * A pointer button is interacted with
      ***/
-    wf::signal_connection_t pointer_button_signal
-    {
+    wf::signal_connection_t pointer_button_signal{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "pointer_button_signal");
@@ -189,8 +191,7 @@ class dbus_interface_t
             uint32_t button;
 
             cursor_position = core.get_cursor_position();
-            wf_ev = static_cast<wf::input_event_signal
-                                <wlr_event_pointer_button>*> (data);
+            wf_ev = static_cast<wf::input_event_signal<wlr_event_pointer_button>*> (data);
             wlr_signal = static_cast<wlr_event_pointer_button*> (wf_ev->event);
             button_state = wlr_signal->state;
             button = wlr_signal->button;
@@ -220,8 +221,7 @@ class dbus_interface_t
      * A tablet button is interacted with
      * TODO: do more for touch events
      ***/
-    wf::signal_connection_t tablet_button_signal
-    {
+    wf::signal_connection_t tablet_button_signal{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "tablet_button_signal");
@@ -232,8 +232,7 @@ class dbus_interface_t
     /***
      * A new view is added to an output.
      ***/
-    wf::signal_connection_t output_view_added
-    {
+    wf::signal_connection_t output_view_added{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_added");
@@ -264,8 +263,7 @@ class dbus_interface_t
     /***
      * The view has closed.
      ***/
-    wf::signal_connection_t view_closed
-    {
+    wf::signal_connection_t view_closed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_closed");
@@ -291,8 +289,7 @@ class dbus_interface_t
     /***
      * The view's app_id has changed.
      ***/
-    wf::signal_connection_t view_app_id_changed
-    {
+    wf::signal_connection_t view_app_id_changed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_app_id_changed");
@@ -319,8 +316,7 @@ class dbus_interface_t
     /***
      * The view's title has changed.
      ***/
-    wf::signal_connection_t view_title_changed
-    {
+    wf::signal_connection_t view_title_changed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_title_changed");
@@ -347,8 +343,7 @@ class dbus_interface_t
     /***
      * The view's fullscreen status has changed.
      ***/
-    wf::signal_connection_t view_fullscreen_changed
-    {
+    wf::signal_connection_t view_fullscreen_changed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_fullscreened");
@@ -370,8 +365,7 @@ class dbus_interface_t
     /***
      * The view's geometry has changed.
      ***/
-    wf::signal_connection_t view_geometry_changed
-    {
+    wf::signal_connection_t view_geometry_changed{
         [=] (wf::signal_data_t* data)
         {
             if (!geometry_signal_enabled)
@@ -401,8 +395,7 @@ class dbus_interface_t
     /***
      * The view's tiling status has changed.
      ***/
-    wf::signal_connection_t view_tiled
-    {
+    wf::signal_connection_t view_tiled{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_tiled");
@@ -430,8 +423,7 @@ class dbus_interface_t
     /***
      * The view's output has changed.
      ***/
-    wf::signal_connection_t view_output_moved
-    {
+    wf::signal_connection_t view_output_moved{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_output_moved");
@@ -464,8 +456,7 @@ class dbus_interface_t
     /***
      * The view's output is about to change.
      ***/
-    wf::signal_connection_t view_output_move_requested
-    {
+    wf::signal_connection_t view_output_move_requested{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_output_move_requested");
@@ -496,8 +487,7 @@ class dbus_interface_t
     /***
      * The view's role has changed.
      ***/
-    wf::signal_connection_t role_changed
-    {
+    wf::signal_connection_t role_changed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "role_changed");
@@ -540,8 +530,7 @@ class dbus_interface_t
     /***
      * The view's workspaces have changed.
      ***/
-    wf::signal_connection_t view_workspaces_changed
-    {
+    wf::signal_connection_t view_workspaces_changed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_workspaces_changed");
@@ -568,8 +557,7 @@ class dbus_interface_t
     /***
      * The view's maximized status has changed.
      ***/
-    wf::signal_connection_t output_view_maximized
-    {
+    wf::signal_connection_t output_view_maximized{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_maximized");
@@ -599,8 +587,7 @@ class dbus_interface_t
     /***
      * The view's minimized status has changed.
      ***/
-    wf::signal_connection_t output_view_minimized
-    {
+    wf::signal_connection_t output_view_minimized{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_minimized");
@@ -630,8 +617,7 @@ class dbus_interface_t
     /***
      * The view's focus has changed.
      ***/
-    wf::signal_connection_t output_view_focus_changed
-    {
+    wf::signal_connection_t output_view_focus_changed{
         [=] (wf::signal_data_t* data)
         {
             GVariant* signal_data;
@@ -681,8 +667,7 @@ class dbus_interface_t
      *   2) Multiplayer games if game is found.
      *      (source engine does this)
      ***/
-    wf::signal_connection_t view_focus_request
-    {
+    wf::signal_connection_t view_focus_request{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_focus_request_signal");
@@ -736,8 +721,7 @@ class dbus_interface_t
      * The currently ownly interesting hint
      * is view-demands-attention
      ***/
-    wf::signal_connection_t view_hints_changed
-    {
+    wf::signal_connection_t view_hints_changed{
         [=] (wf::signal_data_t* data)
         {
             wf::view_hints_changed_signal* signal;
@@ -776,8 +760,7 @@ class dbus_interface_t
      * The status of that has somehow changed.
      * https://github.com/WayfireWM/wayfire/issues/639
      ***/
-    wf::signal_connection_t output_view_moving
-    {
+    wf::signal_connection_t output_view_moving{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_moving");
@@ -803,8 +786,7 @@ class dbus_interface_t
      * The status of that has somehow changed.
      * https://github.com/WayfireWM/wayfire/issues/639
      ***/
-    wf::signal_connection_t output_view_resizing
-    {
+    wf::signal_connection_t output_view_resizing{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_resizing");
@@ -829,8 +811,7 @@ class dbus_interface_t
      * The wm-actions plugin changed the above_layer
      * state of a view.
      ***/
-    wf::signal_connection_t on_view_keep_above
-    {
+    wf::signal_connection_t on_view_keep_above{
         [=] (wf::signal_data_t* data)
         {
             GVariant* signal_data;
@@ -854,8 +835,7 @@ class dbus_interface_t
     /***
      * The decoration of a view has changed
      ***/
-    wf::signal_connection_t output_view_decoration_changed
-    {
+    wf::signal_connection_t output_view_decoration_changed{
         [=] (wf::signal_data_t* data)
         {}
     };
@@ -863,18 +843,15 @@ class dbus_interface_t
     /***
      * No usecase has been found for these 3
      ***/
-    wf::signal_connection_t output_detach_view
-    {
+    wf::signal_connection_t output_detach_view{
         [=] (wf::signal_data_t* data)
         {}
     };
-    wf::signal_connection_t output_view_disappeared
-    {
+    wf::signal_connection_t output_view_disappeared{
         [=] (wf::signal_data_t* data)
         {}
     };
-    wf::signal_connection_t output_view_attached
-    {
+    wf::signal_connection_t output_view_attached{
         [=] (wf::signal_data_t* data)
         {}
     };
@@ -885,8 +862,7 @@ class dbus_interface_t
      * If the output configuration is changed somehow,
      * scaling / resolution etc changes, this is emitted
      ***/
-    wf::signal_connection_t output_configuration_changed
-    {
+    wf::signal_connection_t output_configuration_changed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_configuration_changed");
@@ -897,8 +873,7 @@ class dbus_interface_t
     /***
      * The workspace of an output changed
      ***/
-    wf::signal_connection_t output_workspace_changed
-    {
+    wf::signal_connection_t output_workspace_changed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_workspace_changed");
@@ -926,8 +901,7 @@ class dbus_interface_t
     /***
      * A new output has been added
      ***/
-    wf::signal_connection_t output_layout_output_added
-    {
+    wf::signal_connection_t output_layout_output_added{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_layout_output_added");
@@ -994,8 +968,7 @@ class dbus_interface_t
     /***
      * An output has been removed
      ***/
-    wf::signal_connection_t output_layout_output_removed
-    {
+    wf::signal_connection_t output_layout_output_removed{
         [=] (wf::signal_data_t* data)
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_layout_output_removed");
