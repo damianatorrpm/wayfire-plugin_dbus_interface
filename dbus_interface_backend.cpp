@@ -388,7 +388,7 @@ local_thread_peek_view(void *data)
         }
         last_focus_view->erase_data("dbus-peek-last-focus-view");
         last_focus_view->set_minimized(false);
-        last_focus_view->set_activate(true);
+        last_focus_view->set_activated(true);
     }
 
     g_variant_unref((GVariant *)data);
