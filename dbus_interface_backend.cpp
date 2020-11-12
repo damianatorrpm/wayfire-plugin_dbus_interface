@@ -306,40 +306,44 @@ local_thread_peek_view(void *data)
     bool peek;
     wayfire_view current_focus_view;
     wayfire_view peeked_view;
-    wf::output_t *output;
 
     g_variant_get((GVariant *)data, "(ub)", &view_id, &peek);
     peeked_view = get_view_from_view_id(view_id);
+    g_warning("peeking view: %s %u",
+              peeked_view->get_title().c_str(), view_id);
 
     if (peek)
     {
-        output = wf::get_core().get_active_output();
-        current_focus_view = output->get_active_view();
-        current_focus_view->store_data(std::make_unique<wf::custom_data_t>(),
-                                       "dbus-peek-last-focus-view");
 
-        for (wayfire_view view : core.get_all_views())
+        for (wayfire_view v : core.get_all_views())
         {
-            if (!view)
+            if (!v)
             {
                 continue;
             }
 
-            if (view == peeked_view)
+            if (v == peeked_view)
             {
                 continue;
             }
 
-            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
+            if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
             {
+                g_warning("skip view: %u", v->get_id());
                 continue;
             }
 
-            else if (!view->minimized)
+            if (v->activated)
             {
-                view->store_data(std::make_unique<wf::custom_data_t>(),
-                                 "dbus-peek-restore-view");
-                view->set_minimized(true);
+                v->store_data(std::make_unique<wf::custom_data_t>(),
+                              "dbus-peek-last-focus-view");
+            }
+
+            else if (!v->minimized)
+            {
+                v->store_data(std::make_unique<wf::custom_data_t>(),
+                              "dbus-peek-restore-view");
+                v->set_minimized(true);
             }
         }
 
@@ -367,6 +371,7 @@ local_thread_peek_view(void *data)
 
             if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
             {
+                g_warning("skip view: %u", view->get_id());
                 continue;
             }
 
@@ -386,9 +391,12 @@ local_thread_peek_view(void *data)
                 last_focus_view = view;
             }
         }
+
+        if (!last_focus_view)
+            return;
         last_focus_view->erase_data("dbus-peek-last-focus-view");
         last_focus_view->set_minimized(false);
-        last_focus_view->set_activated(true);
+        last_focus_view->focus_request();
     }
 
     g_variant_unref((GVariant *)data);
