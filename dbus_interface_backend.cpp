@@ -346,19 +346,19 @@ local_thread_peek_view (void* data)
             }
         }
 
-        current_focus_view.store_data(std::make_unique<wf::custom_data_t> (),
+        current_focus_view->store_data(std::make_unique<wf::custom_data_t> (),
                                       "dbus-peek-last-focus-view");
 
         if (peeked_view->minimized)
         {
-            view->store_data(std::make_unique<wf::custom_data_t> (),
+            peeked_view->store_data(std::make_unique<wf::custom_data_t> (),
                              "dbus-peek-view-was-minimized");
-            view->set_minimized(false);
-            view->focus_request();
+            peeked_view->set_minimized(false);
+            peeked_view->focus_request();
         }
         else
         {
-            view->focus_request();
+            peeked_view->focus_request();
         }
     }
     else
