@@ -335,6 +335,7 @@ local_thread_peek_view(void *data)
 
             if (v->activated)
             {
+                g_warning("Saving view %s", v->get_title().c_str());
                 v->store_data(std::make_unique<wf::custom_data_t>(),
                               "dbus-peek-last-focus-view");
             }
@@ -388,6 +389,7 @@ local_thread_peek_view(void *data)
             }
             else if (view->has_data("dbus-peek-last-focus-view"))
             {
+                g_warning("Restoring view %s", view->get_title().c_str());
                 last_focus_view = view;
             }
         }
@@ -1044,6 +1046,7 @@ handle_method_call(GDBusConnection *connection,
 
     if (g_strcmp0(method_name, "peek_view") == 0)
     {
+        g_variant_ref(parameters);
         g_variant_ref(parameters);
         wl_event_loop_add_idle(core.ev_loop,
                                local_thread_peek_view,
