@@ -304,6 +304,77 @@ local_thread_view_focus (void* data)
     g_variant_unref((GVariant*)data);
 }
 
+/**
+ * TODO: plugin that takes a signal
+ * with the view id and brings it to front
+ * and shades others instead of minimizing all others.
+ * For now animation is undesired for this function.
+ */
+static void
+local_thread_peek_view (void* data)
+{
+    uint view_id;
+    bool peek;
+    wayfire_view peeked_view;
+
+    g_variant_get((GVariant*)data, "(ub)", &view_id, &peek);
+    peeked_view = get_view_from_view_id(view_id);
+
+    if (peek)
+    {
+        for (wayfire_view view : core.get_all_views())
+        {
+            if (!view)
+            {
+                continue;
+            }
+
+            if (view->get_id() == view_id)
+            {
+                if (view->minimized)
+                {
+                    view->store_data(std::make_unique<wf::custom_data_t> (),
+                                     "dbus-peek-view-was-minimized");
+                    view->set_minimized(false);
+                }
+
+                continue;
+            }
+            else
+            {
+                view->store_data(std::make_unique<wf::custom_data_t> (),
+                                 "dbus-peek-restore-view");
+                view->set_minimized(true);
+            }
+        }
+    }
+    else
+    {
+        for (wayfire_view view : core.get_all_views())
+        {
+            if (!view)
+            {
+                continue;
+            }
+
+            if (view->has_data("dbus-peek-view-was-minimized"))
+            {
+                view->erase_data("dbus-peek-view-was-minimized");
+                view->set_minimized(true);
+                continue;
+            }
+            else
+            if (view->has_data("dbus-peek-restore-view"))
+            {
+                view->erase_data("dbus-peek-restore-view");
+                view->set_minimized(true);
+            }
+        }
+    }
+
+    g_variant_unref((GVariant*)data);
+}
+
 static void
 local_thread_change_view_minimize_hint (void* data)
 {
@@ -666,6 +737,10 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='view_id' direction='in'/>"
     "      <arg type='u' name='action' direction='in'/>"
     "    </method>"
+    "    <method name='peek_view'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "      <arg type='b' name='peek' direction='in'/>"
+    "    </method>"
     "    <method name='show_desktop'>"
     "      <arg type='b' name='show' direction='in'/>"
     "    </method>"
@@ -943,6 +1018,18 @@ handle_method_call (GDBusConnection* connection,
         g_variant_ref(parameters);
         wl_event_loop_add_idle(core.ev_loop,
                                local_thread_change_workspace_all_outputs,
+                               static_cast<void*> (parameters));
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
+
+        return;
+    }
+
+    if (g_strcmp0(method_name, "peek_view") == 0)
+    {
+        g_variant_ref(parameters);
+        wl_event_loop_add_idle(core.ev_loop,
+                               local_thread_peek_view,
                                static_cast<void*> (parameters));
         g_dbus_method_invocation_return_value(invocation,
                                               nullptr);
@@ -1273,7 +1360,8 @@ handle_method_call (GDBusConnection* connection,
             if (!wlr_surf)
             {
                 g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(s)", response));
+                                                      g_variant_new("(s)", response));
+
                 return;
             }
 
@@ -1285,8 +1373,10 @@ handle_method_call (GDBusConnection* connection,
                 {
                     g_dbus_method_invocation_return_value(invocation,
                                                           g_variant_new("(s)", response));
+
                     return;
                 }
+
                 g_assert(xsurf != NULL);
                 std::string wm_name_app_id = nonull(xsurf->instance);
                 response = g_strdup_printf(wm_name_app_id.c_str());
@@ -2034,8 +2124,10 @@ handle_method_call (GDBusConnection* connection,
                                                   g_variant_new("(uu)",
                                                                 0,
                                                                 0));
+
             return;
         }
+
         if (wlr_surface_is_xwayland_surface(wlr_surf))
         {
             struct wlr_xwayland_surface* xsurf;
