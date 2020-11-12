@@ -48,11 +48,19 @@ extern "C"
 #include <wayfire/debug.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util.hpp>
-#include <wayfire/view-access-interface.hpp>
-
 #include <wayfire/gtk-shell.hpp>
 
-// #include <wayfire/plugins/wm-actions/wm-actions-signals.hpp>
+struct receiver_data
+{
+    uint view_id = 0;
+    uint action = 0;
+    bool boolean1 = false;
+    bool boolean2 = false;
+    int integer1 = 0;
+    int integer2 = 0;
+    int integer3 = 0;
+    int integer4 = 0;
+};
 
 wf::option_wrapper_t<bool> geometry_signal_enabled{
     "dbus_interface/geometry_signal"};
@@ -62,14 +70,7 @@ std::vector<wf::output_t *> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t *> connected_wf_outputs;
 
 uint focused_view_id;
-
-// Not a proper solution
-uint queued_view_id = 0;
-bool queued_view_param = false;
 bool find_view_under_action = false;
-// TODO: Is this the best approach for the lifetime of these objects?
-
-// set fom introspection_xml during acquire_bus()
 GDBusNodeInfo *introspection_data = nullptr;
 GDBusConnection *dbus_connection;
 GMainContext *dbus_context;
@@ -161,6 +162,7 @@ local_thread_change_view_above(void *data)
         signal_data.view = view;
         output->emit_signal("wm-actions-toggle-above", &signal_data);
     }
+    g_variant_unref((GVariant *)data);
 }
 
 static void
@@ -302,19 +304,20 @@ local_thread_view_focus(void *data)
 static void
 local_thread_peek_view(void *data)
 {
-    uint view_id;
-    bool peek;
+    wayfire_view restore_last_focus_view;
     wayfire_view current_focus_view;
     wayfire_view peeked_view;
+    receiver_data *_data;
 
-    g_variant_get((GVariant *)data, "(ub)", &view_id, &peek);
-    peeked_view = get_view_from_view_id(view_id);
-    g_warning("peeking view: %s %u %i",
-              peeked_view->get_title().c_str(), view_id, peek);
+    _data = static_cast<receiver_data *>(data);
 
-    if (peek)
+    peeked_view = get_view_from_view_id(_data->view_id);
+
+    if (_data->boolean1)
     {
-
+        g_warning("peeking view: %s %u %i",
+                  peeked_view->get_title().c_str(),
+                  _data->view_id, _data->boolean1);
         for (wayfire_view v : core.get_all_views())
         {
             if (!v)
@@ -362,7 +365,10 @@ local_thread_peek_view(void *data)
     }
     else
     {
-        wayfire_view last_focus_view;
+        g_warning("unpeeking view: %s %u %i",
+                  peeked_view->get_title().c_str(),
+                  _data->view_id, _data->boolean1);
+
         for (wayfire_view view : core.get_all_views())
         {
             if (!view)
@@ -390,18 +396,18 @@ local_thread_peek_view(void *data)
             else if (view->has_data("dbus-peek-last-focus-view"))
             {
                 g_warning("Restoring view %s", view->get_title().c_str());
-                last_focus_view = view;
+                restore_last_focus_view = view;
             }
         }
 
-        if (!last_focus_view)
+        if (!restore_last_focus_view)
             return;
-        last_focus_view->erase_data("dbus-peek-last-focus-view");
-        last_focus_view->set_minimized(false);
-        last_focus_view->focus_request();
+        restore_last_focus_view->erase_data("dbus-peek-last-focus-view");
+        restore_last_focus_view->set_minimized(false);
+        restore_last_focus_view->focus_request();
     }
 
-    g_variant_unref((GVariant *)data);
+    delete _data;
 }
 
 static void
@@ -1047,11 +1053,17 @@ handle_method_call(GDBusConnection *connection,
     if (g_strcmp0(method_name, "peek_view") == 0)
     {
         g_variant_ref(parameters);
+
+        receiver_data *data = new receiver_data;
+        g_variant_get(parameters, "(ub)",
+                      &data->view_id,
+                      &data->boolean1);
         wl_event_loop_add_idle(core.ev_loop,
                                local_thread_peek_view,
-                               static_cast<void *>(&parameters));
+                               static_cast<void *>(data));
         g_dbus_method_invocation_return_value(invocation,
                                               nullptr);
+        g_variant_unref((GVariant *)data);
 
         return;
     }
