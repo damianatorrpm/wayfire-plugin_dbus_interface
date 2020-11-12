@@ -166,11 +166,11 @@ class dbus_interface_t
         LOG(wf::log::LOG_LEVEL_DEBUG, "Unloading DBus Plugin");
 
         g_bus_unown_name(owner_id);
-        g_main_loop_quit(dbus_event_loop);
         g_dbus_node_info_unref(introspection_data);
-        g_main_loop_unref(dbus_event_loop);
         g_main_context_pop_thread_default(dbus_context);
         g_main_context_unref(dbus_context);
+        g_main_loop_quit(dbus_event_loop);
+        g_main_loop_unref(dbus_event_loop);        
     }
 
     /******************************View Related Slots***************************/
