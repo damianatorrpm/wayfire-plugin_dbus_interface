@@ -341,6 +341,7 @@ local_thread_peek_view(void *data)
                 g_warning("Saving view %s", v->get_title().c_str());
                 v->store_data(std::make_unique<wf::custom_data_t>(),
                               "dbus-peek-last-focus-view");
+                v->set_minimized(true);
             }
 
             else if (!v->minimized)
