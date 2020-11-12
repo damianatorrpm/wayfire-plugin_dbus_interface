@@ -338,7 +338,7 @@ local_thread_peek_view(void *data)
 
             if (v->activated)
             {
-                g_warning("Saving view %s", v->get_title().c_str());
+                g_warning("Saving view for restore %s", v->get_title().c_str());
                 v->store_data(std::make_unique<wf::custom_data_t>(),
                               "dbus-peek-last-focus-view");
                 v->set_minimized(true);
@@ -403,6 +403,7 @@ local_thread_peek_view(void *data)
 
         if (!restore_last_focus_view)
             return;
+        g_warning("Restoring view2 %s", view->get_title().c_str());
         restore_last_focus_view->erase_data("dbus-peek-last-focus-view");
         restore_last_focus_view->set_minimized(false);
         restore_last_focus_view->focus_request();
