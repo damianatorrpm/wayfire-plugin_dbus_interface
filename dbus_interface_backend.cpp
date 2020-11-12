@@ -328,6 +328,10 @@ local_thread_peek_view (void* data)
             {
                 continue;
             }
+            if (view->role != wf::VIEW_ROLE_TOPLEVEL || !view->is_mapped())
+            {
+                continue;
+            }
 
             if (view->get_id() == view_id)
             {
@@ -357,6 +361,11 @@ local_thread_peek_view (void* data)
                 continue;
             }
 
+            if (view->role != wf::VIEW_ROLE_TOPLEVEL || !view->is_mapped())
+            {
+                continue;
+            }
+            
             if (view->has_data("dbus-peek-view-was-minimized"))
             {
                 view->erase_data("dbus-peek-view-was-minimized");
