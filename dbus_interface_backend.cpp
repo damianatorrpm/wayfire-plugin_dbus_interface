@@ -48,30 +48,29 @@ extern "C"
 #include <wayfire/debug.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util.hpp>
-#include <wayfire/view-access-interface.hpp>
-
 #include <wayfire/gtk-shell.hpp>
 
-// #include <wayfire/plugins/wm-actions/wm-actions-signals.hpp>
-
-wf::option_wrapper_t<bool> geometry_signal_enabled
+struct receiver_data
 {
-    "dbus_interface/geometry_signal"
+    uint view_id = 0;
+    uint action = 0;
+    bool boolean1 = false;
+    bool boolean2 = false;
+    int integer1 = 0;
+    int integer2 = 0;
+    int integer3 = 0;
+    int integer4 = 0;
 };
+
+wf::option_wrapper_t<bool> geometry_signal_enabled{
+    "dbus_interface/geometry_signal"};
 wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
 wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t*> connected_wf_outputs;
 
 uint focused_view_id;
-
-// Not a proper solution
-uint queued_view_id = 0;
-bool queued_view_param = false;
 bool find_view_under_action = false;
-// TODO: Is this the best approach for the lifetime of these objects?
-
-// set fom introspection_xml during acquire_bus()
 GDBusNodeInfo* introspection_data = nullptr;
 GDBusConnection* dbus_connection;
 GMainContext* dbus_context;
@@ -165,6 +164,8 @@ local_thread_change_view_above (void* data)
         signal_data.view = view;
         output->emit_signal("wm-actions-toggle-above", &signal_data);
     }
+
+    g_variant_unref((GVariant*)data);
 }
 
 static void
@@ -302,6 +303,138 @@ local_thread_view_focus (void* data)
 
     // core.set_active_view(view); // Does not brint it to front
     g_variant_unref((GVariant*)data);
+}
+
+/**
+ * TODO: plugin that takes a signal
+ * with the view id and brings it to front
+ * and shades others instead of minimizing all others.
+ * For now animation is undesired for this function.
+ */
+static void
+local_thread_peek_view (void* data)
+{
+    wayfire_view restore_last_focus_view;
+    wayfire_view current_focus_view;
+    wayfire_view peeked_view;
+    receiver_data* _data;
+
+    _data = static_cast<receiver_data*> (data);
+
+    peeked_view = get_view_from_view_id(_data->view_id);
+
+    if (_data->boolean1)
+    {
+        g_warning("peeking view: %s %u %i",
+                  peeked_view->get_title().c_str(),
+                  _data->view_id, _data->boolean1);
+        for (wayfire_view v : core.get_all_views())
+        {
+            if (!v)
+            {
+                continue;
+            }
+
+            if (v == peeked_view)
+            {
+                continue;
+            }
+
+            if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
+            {
+                g_warning("skip view: %u", v->get_id());
+                continue;
+            }
+
+            if (v->activated)
+            {
+                g_warning("Saving view for restore %s", v->get_title().c_str());
+                v->store_data(std::make_unique<wf::custom_data_t> (),
+                              "dbus-peek-last-focus-view");
+                v->set_minimized(true);
+            }
+
+            else
+            if (!v->minimized)
+            {
+                v->store_data(std::make_unique<wf::custom_data_t> (),
+                              "dbus-peek-restore-view");
+                v->set_minimized(true);
+            }
+        }
+
+        if (peeked_view->minimized)
+        {
+            peeked_view->store_data(std::make_unique<wf::custom_data_t> (),
+                                    "dbus-peek-view-was-minimized");
+            peeked_view->set_minimized(false);
+            peeked_view->set_activated(true);
+        }
+        else
+        {
+            peeked_view->store_data(std::make_unique<wf::custom_data_t> (),
+                                    "dbus-peek-view-was-normal");
+            peeked_view->set_activated(true);
+        }
+    }
+    else
+    {
+        g_warning("unpeeking view: %s %u %i",
+                  peeked_view->get_title().c_str(),
+                  _data->view_id, _data->boolean1);
+
+        for (wayfire_view view : core.get_all_views())
+        {
+            if (!view)
+            {
+                continue;
+            }
+
+            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
+            {
+                g_warning("skip view: %u", view->get_id());
+                continue;
+            }
+
+            if (view->has_data("dbus-peek-view-was-minimized"))
+            {
+                view->erase_data("dbus-peek-view-was-minimized");
+                view->set_minimized(true);
+                continue;
+            }
+            else
+            if (view->has_data("dbus-peek-view-was-normal"))
+            {
+                view->set_activated(false);
+                continue;
+            }
+
+            else
+            if (view->has_data("dbus-peek-restore-view"))
+            {
+                view->erase_data("dbus-peek-restore-view");
+                view->set_minimized(false);
+            }
+            else
+            if (view->has_data("dbus-peek-last-focus-view"))
+            {
+                g_warning("Restoring view %s", view->get_title().c_str());
+                restore_last_focus_view = view;
+            }
+        }
+
+        if (!restore_last_focus_view)
+        {
+            return;
+        }
+
+        g_warning("Restoring view2 %s", restore_last_focus_view->get_title().c_str());
+        restore_last_focus_view->erase_data("dbus-peek-last-focus-view");
+        restore_last_focus_view->set_minimized(false);
+        restore_last_focus_view->set_activated(true);
+    }
+
+    delete _data;
 }
 
 static void
@@ -666,6 +799,10 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='view_id' direction='in'/>"
     "      <arg type='u' name='action' direction='in'/>"
     "    </method>"
+    "    <method name='peek_view'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "      <arg type='b' name='peek' direction='in'/>"
+    "    </method>"
     "    <method name='show_desktop'>"
     "      <arg type='b' name='show' direction='in'/>"
     "    </method>"
@@ -949,6 +1086,24 @@ handle_method_call (GDBusConnection* connection,
 
         return;
     }
+
+    if (g_strcmp0(method_name, "peek_view") == 0)
+    {
+        g_variant_ref(parameters);
+
+        receiver_data* data = new receiver_data;
+        g_variant_get(parameters, "(ub)",
+                      &data->view_id,
+                      &data->boolean1);
+        wl_event_loop_add_idle(core.ev_loop,
+                               local_thread_peek_view,
+                               static_cast<void*> (data));
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
+        g_variant_unref((GVariant*)data);
+
+        return;
+    }
     else
     if (g_strcmp0(method_name, "show_desktop") == 0)
     {
@@ -1203,8 +1358,7 @@ handle_method_call (GDBusConnection* connection,
     if (g_strcmp0(method_name, "query_workspace_grid_size") == 0)
     {
         wf::dimensions_t workspaces;
-        workspaces = core.get_active_output()->workspace->
-            get_workspace_grid_size();
+        workspaces = core.get_active_output()->workspace->get_workspace_grid_size();
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(ii)",
@@ -1273,7 +1427,8 @@ handle_method_call (GDBusConnection* connection,
             if (!wlr_surf)
             {
                 g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(s)", response));
+                                                      g_variant_new("(s)", response));
+
                 return;
             }
 
@@ -1285,8 +1440,10 @@ handle_method_call (GDBusConnection* connection,
                 {
                     g_dbus_method_invocation_return_value(invocation,
                                                           g_variant_new("(s)", response));
+
                     return;
                 }
+
                 g_assert(xsurf != NULL);
                 std::string wm_name_app_id = nonull(xsurf->instance);
                 response = g_strdup_printf(wm_name_app_id.c_str());
@@ -2034,8 +2191,10 @@ handle_method_call (GDBusConnection* connection,
                                                   g_variant_new("(uu)",
                                                                 0,
                                                                 0));
+
             return;
         }
+
         if (wlr_surface_is_xwayland_surface(wlr_surf))
         {
             struct wlr_xwayland_surface* xsurf;
@@ -2232,11 +2391,8 @@ dbus_thread_exec_function (gpointer user_data)
      * Event loop is killed, probably dbus plugin is
      * being unloaded
      */
-    LOG(wf::log::LOG_LEVEL_DEBUG, "dbus_thread_exec_function end");
-
-    g_main_loop_unref(dbus_event_loop);
-    g_main_context_pop_thread_default(dbus_context);
-    g_main_context_unref(dbus_context);
+    LOG(wf::log::LOG_LEVEL_DEBUG, "If you are here either dbus plugin");
+    LOG(wf::log::LOG_LEVEL_DEBUG, "is being deactivated or this is a bug.");
 
     return nullptr;
 }
