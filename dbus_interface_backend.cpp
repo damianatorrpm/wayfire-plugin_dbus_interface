@@ -361,6 +361,8 @@ local_thread_peek_view(void *data)
         }
         else
         {
+            peeked_view->store_data(std::make_unique<wf::custom_data_t>(),
+                                    "dbus-peek-view-was-normal");            
             peeked_view->set_activated(true);
         }
     }
@@ -389,6 +391,12 @@ local_thread_peek_view(void *data)
                 view->set_minimized(true);
                 continue;
             }
+            else if (view->has_data("dbus-peek-view-was-normal"))
+            {
+                view->set_activated(false);
+                continue;
+            }
+
             else if (view->has_data("dbus-peek-restore-view"))
             {
                 view->erase_data("dbus-peek-restore-view");
@@ -406,7 +414,7 @@ local_thread_peek_view(void *data)
         g_warning("Restoring view2 %s", restore_last_focus_view->get_title().c_str());
         restore_last_focus_view->erase_data("dbus-peek-last-focus-view");
         restore_last_focus_view->set_minimized(false);
-        restore_last_focus_view->focus_request();
+        restore_last_focus_view->set_activated(true);
     }
 
     delete _data;
