@@ -309,8 +309,8 @@ local_thread_peek_view(void *data)
 
     g_variant_get((GVariant *)data, "(ub)", &view_id, &peek);
     peeked_view = get_view_from_view_id(view_id);
-    g_warning("peeking view: %s %u",
-              peeked_view->get_title().c_str(), view_id);
+    g_warning("peeking view: %s %u %i",
+              peeked_view->get_title().c_str(), view_id, peek);
 
     if (peek)
     {
@@ -1047,10 +1047,9 @@ handle_method_call(GDBusConnection *connection,
     if (g_strcmp0(method_name, "peek_view") == 0)
     {
         g_variant_ref(parameters);
-        g_variant_ref(parameters);
         wl_event_loop_add_idle(core.ev_loop,
                                local_thread_peek_view,
-                               static_cast<void *>(parameters));
+                               static_cast<void *>(&parameters));
         g_dbus_method_invocation_return_value(invocation,
                                               nullptr);
 
