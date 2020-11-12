@@ -319,6 +319,9 @@ local_thread_peek_view (void* data)
     g_variant_get((GVariant*)data, "(ub)", &view_id, &peek);
     peeked_view = get_view_from_view_id(view_id);
     current_focus_view = core.get_cursor_focus_view();
+
+    current_focus_view->store_data(std::make_unique<wf::custom_data_t> (),
+                                   "dbus-peek-last-focus-view");
     if (peek)
     {
         for (wayfire_view view : core.get_all_views())
@@ -328,7 +331,7 @@ local_thread_peek_view (void* data)
                 continue;
             }
 
-            if (view->get_id() == view_id)
+            if (view == peeked_view)
             {
                 continue;
             }
@@ -339,6 +342,7 @@ local_thread_peek_view (void* data)
             }
 
             else
+            if (!view->minimized)
             {
                 view->store_data(std::make_unique<wf::custom_data_t> (),
                                  "dbus-peek-restore-view");
@@ -346,13 +350,10 @@ local_thread_peek_view (void* data)
             }
         }
 
-        current_focus_view->store_data(std::make_unique<wf::custom_data_t> (),
-                                      "dbus-peek-last-focus-view");
-
         if (peeked_view->minimized)
         {
             peeked_view->store_data(std::make_unique<wf::custom_data_t> (),
-                             "dbus-peek-view-was-minimized");
+                                    "dbus-peek-view-was-minimized");
             peeked_view->set_minimized(false);
             peeked_view->focus_request();
         }
