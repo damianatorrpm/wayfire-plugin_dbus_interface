@@ -1323,11 +1323,14 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &output_id);
         output = get_output_from_output_id(output_id);
-        wlr_output = output->handle;
-
-        if (wlr_output != nullptr)
+        if (output)
         {
-            response = g_strdup_printf(wlr_output->make);
+            wlr_output = output->handle;
+
+            if (wlr_output != nullptr)
+            {
+                response = g_strdup_printf(wlr_output->make);
+            }
         }
 
         g_dbus_method_invocation_return_value(invocation,
@@ -1350,11 +1353,14 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &output_id);
         output = get_output_from_output_id(output_id);
-        wlr_output = output->handle;
-
-        if (wlr_output != nullptr)
+        if (output)
         {
-            response = g_strdup_printf(wlr_output->model);
+            wlr_output = output->handle;
+
+            if (wlr_output != nullptr)
+            {
+                response = g_strdup_printf(wlr_output->model);
+            }
         }
 
         g_dbus_method_invocation_return_value(invocation,
@@ -1397,16 +1403,20 @@ handle_method_call (GDBusConnection* connection,
     if (g_strcmp0(method_name, "query_output_workspace") == 0)
     {
         uint output_id;
-        uint horizontal_workspace;
-        uint vertical_workspace;
+        uint horizontal_workspace = 0;
+        uint vertical_workspace = 0;
         wf::output_t* wf_output;
         wf::point_t ws;
 
         g_variant_get(parameters, "(u)", &output_id);
         wf_output = get_output_from_output_id(output_id);
-        ws = wf_output->workspace->get_current_workspace();
-        horizontal_workspace = ws.x;
-        vertical_workspace = ws.y;
+        if (wf_output)
+        {
+            ws = wf_output->workspace->get_current_workspace();
+            horizontal_workspace = ws.x;
+            vertical_workspace = ws.y;
+        }
+
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(uu)",
                                                             horizontal_workspace,
