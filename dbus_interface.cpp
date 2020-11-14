@@ -52,7 +52,7 @@ class dbus_interface_t
     dbus_interface_t()
     {
         LOG(wf::log::LOG_LEVEL_DEBUG, "Loading DBus Plugin");
-
+        settings = g_settings_new("org.wayland.compositor.dbus");
         for (wf::output_t* output : wf_outputs)
         {
             output->connect_signal("view-mapped",
@@ -368,7 +368,9 @@ class dbus_interface_t
     wf::signal_connection_t view_geometry_changed{
         [=] (wf::signal_data_t* data)
         {
-            if (!geometry_signal_enabled)
+            bool enabled;
+            g_settings_get(settings, "geometry-signal", "b", &enabled);
+            if (!enabled)
             {
                 return;
             }
