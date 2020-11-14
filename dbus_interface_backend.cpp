@@ -207,15 +207,15 @@ local_thread_restack_view (void* data)
         if (!restack_above)
         {
             // g_warning("Restacking %s below %s",
-            //           view->get_title().c_str(),
-            //           related_view->get_title().c_str());
+            // view->get_title().c_str(),
+            // related_view->get_title().c_str());
             view->get_output()->workspace->restack_below(view, related_view);
         }
         else
         {
             // g_warning("Restacking %s below %s",
-            //           view->get_title().c_str(),
-            //           related_view->get_title().c_str());
+            // view->get_title().c_str(),
+            // related_view->get_title().c_str());
             view->get_output()->workspace->restack_above(view, related_view);
         }
     }
@@ -385,27 +385,31 @@ local_thread_view_focus (void* data)
     uint view_id;
     uint action;
     wayfire_view view;
+    receiver_data* _data;
 
-    g_variant_get((GVariant*)data, "(uu)", &view_id, &action);
-    view = get_view_from_view_id(view_id);
+    _data = static_cast<receiver_data*> (data);
+    view = get_view_from_view_id(_data->view_id);
 
     if (view)
     {
-        if (action == 0)
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+            view->get_output())
         {
-            view->set_activated(false);
-        }
+            if (_data->action == 0)
+            {
+                view->set_activated(false);
+            }
 
-        else
-        if (action == 1)
-        {
-            view->set_activated(true);
-            view->focus_request();
+            else
+            if (_data->action == 1)
+            {
+                view->set_activated(true);
+                view->focus_request();
+            }
         }
     }
 
-    // core.set_active_view(view); // Does not brint it to front
-    g_variant_unref((GVariant*)data);
+    delete _data;
 }
 
 static void
@@ -608,7 +612,7 @@ const gchar introspection_xml [] =
     "    </method>"
     "    <method name='query_active_output'>"
     "      <arg type='u' name='output_id' direction='out'/>"
-    "    </method>"    
+    "    </method>"
     "    <method name='query_output_name'>"
     "      <arg type='u' name='output_id' direction='in'/>"
     "      <arg type='s' name='name' direction='out'/>"
@@ -1054,12 +1058,14 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "focus_view") == 0)
     {
-        g_variant_ref(parameters);
+        receiver_data* data = new receiver_data;
+        g_variant_get(parameters, "(uu)",
+                      &data->view_id,
+                      &data->action);
         wl_event_loop_add_idle(core.ev_loop,
                                local_thread_view_focus,
-                               static_cast<void*> (parameters));
-        g_dbus_method_invocation_return_value(invocation,
-                                              nullptr);
+                               static_cast<void*> (data));
+        g_dbus_method_invocation_return_value(invocation, nullptr);
 
         return;
     }
@@ -1235,7 +1241,7 @@ handle_method_call (GDBusConnection* connection,
                                               g_variant_new("(u)", output_id));
 
         return;
-    }    
+    }
     else
     if (g_strcmp0(method_name, "query_view_vector_ids") == 0)
     {
@@ -1464,12 +1470,12 @@ handle_method_call (GDBusConnection* connection,
 
             // if (view_above != -1)
             // {
-            //     g_debug("Above %s is %s", view->get_title().c_str(),
-            //               get_view_from_view_id(view_above)->get_title().c_str());
+            // g_debug("Above %s is %s", view->get_title().c_str(),
+            // get_view_from_view_id(view_above)->get_title().c_str());
             // }
             // else
             // {
-            //     g_debug("No view above %s", view->get_title().c_str());
+            // g_debug("No view above %s", view->get_title().c_str());
             // }
         }
 
@@ -1521,12 +1527,12 @@ handle_method_call (GDBusConnection* connection,
 
             // if (view_below != -1)
             // {
-            //     g_warning("Below %s  is  %s", view->get_title().c_str(),
-            //               get_view_from_view_id(view_below)->get_title().c_str());
+            // g_warning("Below %s  is  %s", view->get_title().c_str(),
+            // get_view_from_view_id(view_below)->get_title().c_str());
             // }
             // else
             // {
-            //     g_warning("No view below %s", view->get_title().c_str());
+            // g_warning("No view below %s", view->get_title().c_str());
             // }
         }
 
@@ -2201,7 +2207,7 @@ handle_method_call (GDBusConnection* connection,
             else
             {
                 g_warning("No output for view.");
-            }            
+            }
         }
 
         g_dbus_method_invocation_return_value(invocation,
