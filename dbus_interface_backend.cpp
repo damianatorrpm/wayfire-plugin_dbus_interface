@@ -49,6 +49,7 @@ extern "C"
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util.hpp>
 #include <wayfire/gtk-shell.hpp>
+#include "wayfire/view-transform.hpp"
 
 struct receiver_data
 {
@@ -56,18 +57,19 @@ struct receiver_data
     uint action = 0;
     bool boolean1 = false;
     bool boolean2 = false;
+    double double1 = 0.0;
     int integer1 = 0;
     int integer2 = 0;
     int integer3 = 0;
     int integer4 = 0;
 };
 
-wf::option_wrapper_t<bool> geometry_signal_enabled{
-    "dbus_interface/geometry_signal"};
 wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
+
 wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t*> connected_wf_outputs;
+GSettings* settings;
 
 uint focused_view_id;
 bool find_view_under_action = false;
@@ -119,6 +121,106 @@ get_output_from_output_id (uint output_id)
     }
 
     return nullptr;
+}
+
+static void
+local_thread_shade_view (void* data)
+{
+    receiver_data* _data;
+    wayfire_view view;
+
+    _data = static_cast<receiver_data*> (data);
+    view = get_view_from_view_id(_data->view_id);
+    if (view)
+    {
+        if (_data->double1 == 1.0)
+        {
+            if (view->get_transformer("dbus-shade"))
+            {
+                view->pop_transformer("dbus-shade");
+            }
+        }
+        else
+        {
+            wf::view_2D* transformer;
+            if (!view->get_transformer("dbus-shade"))
+            {
+                view->add_transformer(std::make_unique<wf::view_2D> (view),
+                                      "dbus-shade");
+            }
+
+            transformer = dynamic_cast<wf::view_2D*> (
+                view->get_transformer("dbus-shade").get());
+
+            if (transformer->alpha != (float)_data->double1)
+            {
+                transformer->alpha = (float)_data->double1;
+                view->damage();
+            }
+        }
+    }
+
+    delete _data;
+}
+
+static void
+local_thread_bring_view_to_front (void* data)
+{
+    receiver_data* _data;
+    wayfire_view view;
+
+    _data = static_cast<receiver_data*> (data);
+    view = get_view_from_view_id(_data->view_id);
+    if (view)
+    {
+        if (!view->get_output())
+        {
+            g_warning("output missing for bring view to front.");
+        }
+
+        view->get_output()->workspace->bring_to_front(view);
+    }
+
+    delete _data;
+}
+
+static void
+local_thread_restack_view (void* data)
+{
+    receiver_data* _data;
+    wayfire_view view;
+    wayfire_view related_view;
+    bool restack_above;
+
+    _data = static_cast<receiver_data*> (data);
+    view = get_view_from_view_id(_data->view_id);
+    related_view = get_view_from_view_id(_data->action);
+    restack_above = _data->boolean1;
+
+    if (view && related_view)
+    {
+        if (!view->get_output() || !related_view->get_output())
+        {
+            g_warning("output missing for restacking views.");
+        }
+
+        if (!restack_above)
+        {
+            // g_warning("Restacking %s below %s",
+            //           view->get_title().c_str(),
+            //           related_view->get_title().c_str());
+            view->get_output()->workspace->restack_below(view, related_view);
+        }
+        else
+        {
+            // g_warning("Restacking %s below %s",
+            //           view->get_title().c_str(),
+            //           related_view->get_title().c_str());
+            view->get_output()->workspace->restack_above(view, related_view);
+        }
+    }
+
+    delete _data;
 }
 
 static void
@@ -297,144 +399,13 @@ local_thread_view_focus (void* data)
         else
         if (action == 1)
         {
+            view->set_activated(true);
             view->focus_request();
         }
     }
 
     // core.set_active_view(view); // Does not brint it to front
     g_variant_unref((GVariant*)data);
-}
-
-/**
- * TODO: plugin that takes a signal
- * with the view id and brings it to front
- * and shades others instead of minimizing all others.
- * For now animation is undesired for this function.
- */
-static void
-local_thread_peek_view (void* data)
-{
-    wayfire_view restore_last_focus_view;
-    wayfire_view current_focus_view;
-    wayfire_view peeked_view;
-    receiver_data* _data;
-
-    _data = static_cast<receiver_data*> (data);
-
-    peeked_view = get_view_from_view_id(_data->view_id);
-
-    if (_data->boolean1)
-    {
-        g_warning("peeking view: %s %u %i",
-                  peeked_view->get_title().c_str(),
-                  _data->view_id, _data->boolean1);
-        for (wayfire_view v : core.get_all_views())
-        {
-            if (!v)
-            {
-                continue;
-            }
-
-            if (v == peeked_view)
-            {
-                continue;
-            }
-
-            if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
-            {
-                g_warning("skip view: %u", v->get_id());
-                continue;
-            }
-
-            if (v->activated)
-            {
-                g_warning("Saving view for restore %s", v->get_title().c_str());
-                v->store_data(std::make_unique<wf::custom_data_t> (),
-                              "dbus-peek-last-focus-view");
-                v->set_minimized(true);
-            }
-
-            else
-            if (!v->minimized)
-            {
-                v->store_data(std::make_unique<wf::custom_data_t> (),
-                              "dbus-peek-restore-view");
-                v->set_minimized(true);
-            }
-        }
-
-        if (peeked_view->minimized)
-        {
-            peeked_view->store_data(std::make_unique<wf::custom_data_t> (),
-                                    "dbus-peek-view-was-minimized");
-            peeked_view->set_minimized(false);
-            peeked_view->set_activated(true);
-        }
-        else
-        {
-            peeked_view->store_data(std::make_unique<wf::custom_data_t> (),
-                                    "dbus-peek-view-was-normal");
-            peeked_view->set_activated(true);
-        }
-    }
-    else
-    {
-        g_warning("unpeeking view: %s %u %i",
-                  peeked_view->get_title().c_str(),
-                  _data->view_id, _data->boolean1);
-
-        for (wayfire_view view : core.get_all_views())
-        {
-            if (!view)
-            {
-                continue;
-            }
-
-            if ((view->role != wf::VIEW_ROLE_TOPLEVEL) || !view->is_mapped())
-            {
-                g_warning("skip view: %u", view->get_id());
-                continue;
-            }
-
-            if (view->has_data("dbus-peek-view-was-minimized"))
-            {
-                view->erase_data("dbus-peek-view-was-minimized");
-                view->set_minimized(true);
-                continue;
-            }
-            else
-            if (view->has_data("dbus-peek-view-was-normal"))
-            {
-                view->set_activated(false);
-                continue;
-            }
-
-            else
-            if (view->has_data("dbus-peek-restore-view"))
-            {
-                view->erase_data("dbus-peek-restore-view");
-                view->set_minimized(false);
-            }
-            else
-            if (view->has_data("dbus-peek-last-focus-view"))
-            {
-                g_warning("Restoring view %s", view->get_title().c_str());
-                restore_last_focus_view = view;
-            }
-        }
-
-        if (!restore_last_focus_view)
-        {
-            return;
-        }
-
-        g_warning("Restoring view2 %s", restore_last_focus_view->get_title().c_str());
-        restore_last_focus_view->erase_data("dbus-peek-last-focus-view");
-        restore_last_focus_view->set_minimized(false);
-        restore_last_focus_view->set_activated(true);
-    }
-
-    delete _data;
 }
 
 static void
@@ -635,6 +606,9 @@ const gchar introspection_xml [] =
     "    <method name='query_output_ids'>"
     "      <arg direction='out' type='au' />"
     "    </method>"
+    "    <method name='query_active_output'>"
+    "      <arg type='u' name='output_id' direction='out'/>"
+    "    </method>"    
     "    <method name='query_output_name'>"
     "      <arg type='u' name='output_id' direction='in'/>"
     "      <arg type='s' name='name' direction='out'/>"
@@ -751,6 +725,14 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='value' direction='out'/>"
     "      <arg type='u' name='value2' direction='out'/>"
     "    </method>"
+    "    <method name='query_view_below_view'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "      <arg type='i' name='below_view_id' direction='out'/>"
+    "    </method>"
+    "    <method name='query_view_above_view'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "      <arg type='i' name='above_view_id' direction='out'/>"
+    "    </method>"
     "    <method name='minimize_view'>"
     "      <arg type='u' name='view_id' direction='in'/>"
     "      <arg type='u' name='action' direction='in'/>"
@@ -799,9 +781,20 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='view_id' direction='in'/>"
     "      <arg type='u' name='action' direction='in'/>"
     "    </method>"
-    "    <method name='peek_view'>"
+    "    <method name='shade_view'>"
     "      <arg type='u' name='view_id' direction='in'/>"
-    "      <arg type='b' name='peek' direction='in'/>"
+    "      <arg type='d' name='value' direction='in'/>"
+    "    </method>"
+    "    <method name='bring_view_to_front'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "    </method>"
+    "    <method name='restack_view_above'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "      <arg type='u' name='view_id_now_above_view_id' direction='in'/>"
+    "    </method>"
+    "    <method name='restack_view_below'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "      <arg type='u' name='view_id_now_below_view_id' direction='in'/>"
     "    </method>"
     "    <method name='show_desktop'>"
     "      <arg type='b' name='show' direction='in'/>"
@@ -966,6 +959,75 @@ handle_method_call (GDBusConnection* connection,
 
     /*************** View Actions ****************/
     else
+    if (g_strcmp0(method_name, "shade_view") == 0)
+    {
+        g_variant_ref(parameters);
+
+        receiver_data* data = new receiver_data;
+        g_variant_get(parameters, "(ud)",
+                      &data->view_id,
+                      &data->double1);
+        wl_event_loop_add_idle(core.ev_loop,
+                               local_thread_shade_view,
+                               static_cast<void*> (data));
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
+
+        return;
+    }
+    else
+    if (g_strcmp0(method_name, "bring_view_to_front") == 0)
+    {
+        g_variant_ref(parameters);
+
+        receiver_data* data = new receiver_data;
+        g_variant_get(parameters, "(u)",
+                      &data->view_id);
+        wl_event_loop_add_idle(core.ev_loop,
+                               local_thread_bring_view_to_front,
+                               static_cast<void*> (data));
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
+
+        return;
+    }
+    else
+    if (g_strcmp0(method_name, "restack_view_above") == 0)
+    {
+        g_variant_ref(parameters);
+
+        receiver_data* data = new receiver_data;
+        data->boolean1 = true;
+        g_variant_get(parameters, "(uu)",
+                      &data->view_id,
+                      &data->action);
+        wl_event_loop_add_idle(core.ev_loop,
+                               local_thread_restack_view,
+                               static_cast<void*> (data));
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
+
+        return;
+    }
+    else
+    if (g_strcmp0(method_name, "restack_view_below") == 0)
+    {
+        g_variant_ref(parameters);
+
+        receiver_data* data = new receiver_data;
+        data->boolean1 = false;
+        g_variant_get(parameters, "(uu)",
+                      &data->view_id,
+                      &data->action);
+        wl_event_loop_add_idle(core.ev_loop,
+                               local_thread_restack_view,
+                               static_cast<void*> (data));
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
+
+        return;
+    }
+    else
     if (g_strcmp0(method_name, "minimize_view") == 0)
     {
         g_variant_ref(parameters);
@@ -1086,24 +1148,6 @@ handle_method_call (GDBusConnection* connection,
 
         return;
     }
-
-    if (g_strcmp0(method_name, "peek_view") == 0)
-    {
-        g_variant_ref(parameters);
-
-        receiver_data* data = new receiver_data;
-        g_variant_get(parameters, "(ub)",
-                      &data->view_id,
-                      &data->boolean1);
-        wl_event_loop_add_idle(core.ev_loop,
-                               local_thread_peek_view,
-                               static_cast<void*> (data));
-        g_dbus_method_invocation_return_value(invocation,
-                                              nullptr);
-        g_variant_unref((GVariant*)data);
-
-        return;
-    }
     else
     if (g_strcmp0(method_name, "show_desktop") == 0)
     {
@@ -1182,6 +1226,16 @@ handle_method_call (GDBusConnection* connection,
 
         return;
     }
+    else
+    if (g_strcmp0(method_name, "query_active_output") == 0)
+    {
+        uint output_id;
+        output_id = core.get_active_output()->get_id();
+        g_dbus_method_invocation_return_value(invocation,
+                                              g_variant_new("(u)", output_id));
+
+        return;
+    }    
     else
     if (g_strcmp0(method_name, "query_view_vector_ids") == 0)
     {
@@ -1368,6 +1422,120 @@ handle_method_call (GDBusConnection* connection,
         return;
     }
     /*************** View Properties ****************/
+    else
+    if (g_strcmp0(method_name, "query_view_above_view") == 0)
+    {
+        uint view_id;
+        int view_above = -1;
+        wayfire_view view;
+        std::vector<wayfire_view> workspace_views;
+
+        g_variant_get(parameters, "(u)", &view_id);
+        view = get_view_from_view_id(view_id);
+
+        if (view)
+        {
+            workspace_views = view->get_output()->workspace->get_views_in_layer(
+                wf::MIDDLE_LAYERS);
+
+            for (int i = 0; i < workspace_views.size(); i++)
+            {
+                wayfire_view v = workspace_views[i];
+                if (!v)
+                {
+                    continue;
+                }
+
+                g_assert(v->is_mapped());
+                if (v->role != wf::VIEW_ROLE_TOPLEVEL)
+                {
+                    continue;
+                }
+
+                if (v == view)
+                {
+                    if (i != 0)
+                    {
+                        view_above = workspace_views[i - 1]->get_id();
+                        break;
+                    }
+                }
+            }
+
+            // if (view_above != -1)
+            // {
+            //     g_debug("Above %s is %s", view->get_title().c_str(),
+            //               get_view_from_view_id(view_above)->get_title().c_str());
+            // }
+            // else
+            // {
+            //     g_debug("No view above %s", view->get_title().c_str());
+            // }
+        }
+
+        g_dbus_method_invocation_return_value(invocation,
+                                              g_variant_new("(i)",
+                                                            view_above));
+
+        return;
+    }
+    else
+    if (g_strcmp0(method_name, "query_view_below_view") == 0)
+    {
+        uint view_id;
+        int view_below = -1;
+        wayfire_view view;
+        std::vector<wayfire_view> workspace_views;
+
+        g_variant_get(parameters, "(u)", &view_id);
+        view = get_view_from_view_id(view_id);
+
+        if (view)
+        {
+            workspace_views = view->get_output()->workspace->get_views_in_layer(
+                wf::MIDDLE_LAYERS);
+
+            for (int i = 0; i < workspace_views.size(); i++)
+            {
+                wayfire_view v = workspace_views[i];
+                if (!v)
+                {
+                    continue;
+                }
+
+                g_assert(v->is_mapped());
+                if (v->role != wf::VIEW_ROLE_TOPLEVEL)
+                {
+                    continue;
+                }
+
+                if (v == view)
+                {
+                    if (i != workspace_views.size() - 1)
+                    {
+                        view_below = workspace_views[i + 1]->get_id();
+                        break;
+                    }
+                }
+            }
+
+            // if (view_below != -1)
+            // {
+            //     g_warning("Below %s  is  %s", view->get_title().c_str(),
+            //               get_view_from_view_id(view_below)->get_title().c_str());
+            // }
+            // else
+            // {
+            //     g_warning("No view below %s", view->get_title().c_str());
+            // }
+        }
+
+        g_dbus_method_invocation_return_value(invocation,
+                                              g_variant_new("(i)",
+                                                            view_below));
+
+        return;
+    }
     else
     if (g_strcmp0(method_name, "query_view_app_id") == 0)
     {
@@ -2026,7 +2194,14 @@ handle_method_call (GDBusConnection* connection,
 
         if (view)
         {
-            output_id = view->get_output()->get_id();
+            if (view->get_output())
+            {
+                output_id = view->get_output()->get_id();
+            }
+            else
+            {
+                g_warning("No output for view.");
+            }            
         }
 
         g_dbus_method_invocation_return_value(invocation,
