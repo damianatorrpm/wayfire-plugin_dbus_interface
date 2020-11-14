@@ -4,11 +4,5 @@
 	<_short>DBus Interface </_short>
 	<_long>DBus Interface @ org.wayland.compositor</_long>
 	<category>Desktop</category>
-	<option name="geometry_signal" type="bool">
-		<_short>If the geometry changed signal is emitted</_short>
-		<_long>This signal may produce a fair amount of overhead
-and should be activated only if necessary. </_long>
-		<default>false</default>
-	</option>
 	</plugin>
 </wayfire>
