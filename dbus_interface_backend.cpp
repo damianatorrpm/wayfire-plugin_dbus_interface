@@ -64,6 +64,12 @@ struct receiver_data
     int integer4 = 0;
 };
 
+static void receiver_data_free(void* data)
+{
+    LOG(wf::log::LOG_LEVEL_DEBUG, "receiver_data_free");
+    delete data;
+}
+
 wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
 
 wf::compositor_core_t& core = wf::get_core();
@@ -163,7 +169,7 @@ local_thread_shade_view (void* data)
         }
     }
 
-    delete _data;
+   receiver_data_free(_data);
 }
 
 static void
