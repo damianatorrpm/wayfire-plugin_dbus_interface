@@ -131,8 +131,11 @@ local_thread_shade_view (void* data)
 
     _data = static_cast<receiver_data*> (data);
     view = get_view_from_view_id(_data->view_id);
-    if (view)
+    if (view && _data != nullptr)
     {
+        if (!view->is_mapped() || view->role != wf::VIEW_ROLE_TOPLEVEL)
+            return;
+
         if (_data->double1 == 1.0)
         {
             if (view->get_transformer("dbus-shade"))
@@ -965,8 +968,6 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "shade_view") == 0)
     {
-        g_variant_ref(parameters);
-
         receiver_data* data = new receiver_data;
         g_variant_get(parameters, "(ud)",
                       &data->view_id,
