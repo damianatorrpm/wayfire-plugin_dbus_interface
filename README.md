@@ -4,6 +4,12 @@ Authors: Damian Ivanov
 
 Contributors: Scott Moreau
 
+### Installation
+Standard:
+meson -C build && ninja -C build && ninja -C build install
+Although you may want to set --prefix=/usr if that's
+the locaiton of your wayfire installation
+
 ### Coding style
 * uncrustify.ini in the repo
 * follow the style used
