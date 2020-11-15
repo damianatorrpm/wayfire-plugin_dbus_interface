@@ -1518,8 +1518,7 @@ handle_method_call (GDBusConnection* connection,
                     continue;
                 }
 
-                g_assert(v->is_mapped());
-                if (v->role != wf::VIEW_ROLE_TOPLEVEL)
+                if (v->role != wf::VIEW_ROLE_TOPLEVEL || !v->is_mapped())
                 {
                     continue;
                 }
