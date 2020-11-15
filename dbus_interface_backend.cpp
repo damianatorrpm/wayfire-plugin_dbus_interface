@@ -64,7 +64,8 @@ struct receiver_data
     int integer4 = 0;
 };
 
-static void receiver_data_free(void* data)
+static void
+receiver_data_free (void* data)
 {
     LOG(wf::log::LOG_LEVEL_DEBUG, "receiver_data_free");
     delete data;
@@ -137,10 +138,12 @@ local_thread_shade_view (void* data)
 
     _data = static_cast<receiver_data*> (data);
     view = get_view_from_view_id(_data->view_id);
-    if (view && _data != nullptr)
+    if (view && (_data != nullptr))
     {
-        if (!view->is_mapped() || view->role != wf::VIEW_ROLE_TOPLEVEL)
+        if (!view->is_mapped() || (view->role != wf::VIEW_ROLE_TOPLEVEL))
+        {
             return;
+        }
 
         if (_data->double1 == 1.0)
         {
@@ -169,7 +172,7 @@ local_thread_shade_view (void* data)
         }
     }
 
-   receiver_data_free(_data);
+    receiver_data_free(_data);
 }
 
 static void
@@ -1469,7 +1472,7 @@ handle_method_call (GDBusConnection* connection,
                     continue;
                 }
 
-                if (v->role != wf::VIEW_ROLE_TOPLEVEL || !v->is_mapped())
+                if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
                 {
                     continue;
                 }
@@ -1525,7 +1528,7 @@ handle_method_call (GDBusConnection* connection,
                     continue;
                 }
 
-                if (v->role != wf::VIEW_ROLE_TOPLEVEL || !v->is_mapped())
+                if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
                 {
                     continue;
                 }
@@ -2347,21 +2350,24 @@ handle_method_call (GDBusConnection* connection,
 
         if (view)
         {
-            is_modal_dialog = view->has_data("gtk-shell-modal");
-            if ((view->role == wf::VIEW_ROLE_TOPLEVEL) &&
-                !is_modal_dialog)
+            if (view->is_mapped())
             {
-                response = 1;
-            }
-            else
-            if (view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT)
-            {
-                response = 2;
-            }
-            else
-            if (view->role == wf::VIEW_ROLE_UNMANAGED)
-            {
-                response = 3;
+                is_modal_dialog = view->has_data("gtk-shell-modal");
+                if ((view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+                    !is_modal_dialog)
+                {
+                    response = 1;
+                }
+                else
+                if (view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT)
+                {
+                    response = 2;
+                }
+                else
+                if (view->role == wf::VIEW_ROLE_UNMANAGED)
+                {
+                    response = 3;
+                }
             }
         }
 
