@@ -8,6 +8,7 @@ Contributors: Scott Moreau
 Standard:
 meson -C build && ninja -C build && ninja -C build install
 
+Additionally run sudo glib-compile-schemas /usr/share/glib-2.0/schemas/ 
 Although you may want to set --prefix=/usr if that's
 the locaiton of your wayfire installation
 
