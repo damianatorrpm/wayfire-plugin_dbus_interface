@@ -13,7 +13,7 @@ project(
 )
 
 gio = dependency('gio-2.0')
-wayfire = dependency('wayfire')
+wayfire = dependency('wayfire', version: '>=0.6.0', required : true)
 wlroots = dependency('wlroots')
 wfconfig = dependency('wf-config')
 glib = dependency('glib-2.0')
