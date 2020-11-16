@@ -99,17 +99,29 @@ get_view_from_view_id (uint view_id)
     if (view_id == 0)
     {
         view = core.get_cursor_focus_view();
-        if ((view->role == wf::VIEW_ROLE_TOPLEVEL) && view->is_mapped())
+        if (view)
         {
-            return view;
+            if ((view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+                view->is_mapped())
+            {
+                return view;
+            }
         }
     }
 
-    for (auto it = begin(view_vector); it != end(view_vector); ++it)
+    for (int i = view_vector.size(); i-- > 0;)
     {
-        if (it->get()->get_id() == view_id)
+        wayfire_view v;
+        v = view_vector[i];
+        if (v)
         {
-            return it->get();
+            if (v->is_mapped())
+            {
+                if (v->get_id() == view_id)
+                {
+                    return v;
+                }
+            }
         }
     }
 
@@ -2353,16 +2365,19 @@ handle_method_call (GDBusConnection* connection,
             if (view->is_mapped())
             {
                 is_modal_dialog = view->has_data("gtk-shell-modal");
+
                 if ((view->role == wf::VIEW_ROLE_TOPLEVEL) &&
                     !is_modal_dialog)
                 {
                     response = 1;
                 }
+
                 else
                 if (view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT)
                 {
                     response = 2;
                 }
+
                 else
                 if (view->role == wf::VIEW_ROLE_UNMANAGED)
                 {
