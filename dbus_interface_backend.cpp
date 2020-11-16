@@ -2,6 +2,8 @@
  * This file is licensed under the MIT license.
  * Copyright (C) 2019 - 2020 Damian Ivanov <damianatorrpm@gmail.com>
  ********************************************************************/
+#define DBUS_PLUGIN_DEBUG TRUE
+#define DBUS_PLUGIN_WARN TRUE
 
 extern "C"
 {
@@ -67,7 +69,9 @@ struct receiver_data
 static void
 receiver_data_free (void* data)
 {
+#ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG, "receiver_data_free");
+#endif
     delete data;
 }
 
@@ -197,10 +201,13 @@ local_thread_bring_view_to_front (void* data)
     view = get_view_from_view_id(_data->view_id);
     if (view)
     {
+#ifdef DBUS_PLUGIN_WARN
         if (!view->get_output())
         {
             g_warning("output missing for bring view to front.");
         }
+
+#endif
 
         view->get_output()->workspace->bring_to_front(view);
     }
@@ -223,10 +230,13 @@ local_thread_restack_view (void* data)
 
     if (view && related_view)
     {
+#ifdef DBUS_PLUGIN_WARN
         if (!view->get_output() || !related_view->get_output())
         {
             g_warning("output missing for restacking views.");
         }
+
+#endif
 
         if (!restack_above)
         {
@@ -970,7 +980,9 @@ handle_method_call (GDBusConnection* connection,
                     GDBusMethodInvocation* invocation,
                     gpointer user_data)
 {
+#ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG, "handle_method_call bus called", method_name);
+#endif
 
     if (g_strcmp0(method_name, "change_view_above") == 0)
     {
@@ -1757,8 +1769,10 @@ handle_method_call (GDBusConnection* connection,
 
             if (wlr_surface_is_xwayland_surface(main_wlr_surface))
             {
+#ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG,
                     "xwayland is the surface type.");
+#endif
                 struct wlr_xwayland_surface* main_xsurf;
                 main_xsurf = wlr_xwayland_surface_from_wlr_surface(main_wlr_surface);
                 g_dbus_method_invocation_return_value(invocation,
@@ -1777,8 +1791,6 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "query_view_xwayland_atom_cardinal") == 0)
     {
-        LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_xwayland_atom_cardinal.");
-
         uint view_id;
         uint atom_value_cardinal = 0;
         gchar* atom_name;
@@ -1834,8 +1846,10 @@ handle_method_call (GDBusConnection* connection,
         }
         else
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG,
                 "reply for querying the atom is empty.");
+#endif
             g_dbus_method_invocation_return_value(invocation,
                                                   g_variant_new("(u)",
                                                                 atom_value_cardinal));
@@ -1859,14 +1873,19 @@ handle_method_call (GDBusConnection* connection,
         {
             uint* uvalue = (uint*)xcb_get_property_value(reply_value);
             atom_value_cardinal = *uvalue;
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG,
                 "value to uint.", atom_value_cardinal);
+#endif
         }
+
+#ifdef DBUS_PLUGIN_DEBUG
         else
         {
             LOG(wf::log::LOG_LEVEL_DEBUG,
                 "requested value is not a cardinal");
         }
+#endif
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(u)",
@@ -1877,8 +1896,6 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "query_view_xwayland_atom_string") == 0)
     {
-        LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_xwayland_atom");
-
         uint view_id;
         gchar* atom_name;
         gchar* atom_value_string = "No atom value received.";
@@ -1961,8 +1978,10 @@ handle_method_call (GDBusConnection* connection,
         if (reply_value->type != XCB_ATOM_CARDINAL)
         {
             atom_value_string = value;
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG,
                 "value to char.", atom_value_string);
+#endif
             g_dbus_method_invocation_return_value(invocation,
                                                   g_variant_new("(s)",
                                                                 atom_value_string));
@@ -2036,8 +2055,10 @@ handle_method_call (GDBusConnection* connection,
 
                 if (reply == NULL)
                 {
+#ifdef DBUS_PLUGIN_DEBUG
                     LOG(wf::log::LOG_LEVEL_DEBUG,
                         "could not get pid from xserver, empty reply");
+#endif
                 }
                 else
                 {
@@ -2073,7 +2094,9 @@ handle_method_call (GDBusConnection* connection,
             }
         }
 
+#ifdef DBUS_PLUGIN_DEBUG
         LOG(wf::log::LOG_LEVEL_DEBUG, "returning standard credentials.");
+#endif
         wl_client_get_credentials(view->get_client(),
                                   &pid,
                                   &uid,
@@ -2104,11 +2127,13 @@ handle_method_call (GDBusConnection* connection,
                 above = true;
             }
         }
+
+#ifdef DBUS_PLUGIN_DEBUG
         else
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_above no view");
         }
-
+#endif
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(b)",
                                                             above));
@@ -2129,11 +2154,13 @@ handle_method_call (GDBusConnection* connection,
         {
             response = (view->tiled_edges == wf::TILED_EDGES_ALL);
         }
+
+#ifdef DBUS_PLUGIN_DEBUG
         else
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_maximized no view");
         }
-
+#endif
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(b)",
                                                             response));
@@ -2155,11 +2182,13 @@ handle_method_call (GDBusConnection* connection,
         {
             response = view->activated;
         }
+
+#ifdef DBUS_PLUGIN_DEBUG
         else
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_active no view");
         }
-
+#endif
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(b)",
                                                             response));
@@ -2181,11 +2210,13 @@ handle_method_call (GDBusConnection* connection,
         {
             response = view->minimized;
         }
+
+#ifdef DBUS_PLUGIN_DEBUG
         else
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_minimized no view");
         }
-
+#endif
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(b)",
                                                             response));
@@ -2207,11 +2238,13 @@ handle_method_call (GDBusConnection* connection,
         {
             response = view->fullscreen;
         }
+
+#ifdef DBUS_PLUGIN_DEBUG
         else
         {
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_fullscreen no view");
         }
-
+#endif
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(b)",
                                                             response));
@@ -2234,10 +2267,14 @@ handle_method_call (GDBusConnection* connection,
             {
                 output_id = view->get_output()->get_id();
             }
+
+#ifdef DBUS_PLUGIN_DEBUG
+
             else
             {
                 g_warning("No output for view.");
             }
+#endif
         }
 
         g_dbus_method_invocation_return_value(invocation,
@@ -2268,7 +2305,10 @@ handle_method_call (GDBusConnection* connection,
 
         if (!view || (view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT))
         {
+#ifdef DBUS_PLUGIN_DEBUG
+
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_workspaces no view");
+#endif
             g_dbus_method_invocation_return_value(invocation,
                                                   g_variant_new("(a(ii))",
                                                                 nullptr));
@@ -2320,8 +2360,6 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "query_view_group_leader") == 0)
     {
-        LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_group_leader bus called");
-
         uint view_id;
         uint group_leader_view_id;
         wayfire_view view;
@@ -2335,12 +2373,12 @@ handle_method_call (GDBusConnection* connection,
             while (view->parent)
             {
                 view = view->parent;
-
-                LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_group_leader view has p");
             }
 
             group_leader_view_id = view->get_id();
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_group_leader found returning");
+#endif
         }
 
         g_dbus_method_invocation_return_value(invocation,
@@ -2429,25 +2467,21 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "inhibit_output_start") == 0)
     {
-        LOG(wf::log::LOG_LEVEL_DEBUG, "inhibit_output_start bus called");
         g_variant_unref(parameters);
     }
     else
     if (g_strcmp0(method_name, "inhibit_output_stop") == 0)
     {
-        LOG(wf::log::LOG_LEVEL_DEBUG, "inhibit_output_stop bus called");
         g_variant_unref(parameters);
     }
     else
     if (g_strcmp0(method_name, "trigger_show_desktop") == 0)
     {
-        LOG(wf::log::LOG_LEVEL_DEBUG, "trigger_show_desktop bus called");
         g_variant_unref(parameters);
     }
     else
     if (g_strcmp0(method_name, "trigger_show_overview") == 0)
     {
-        LOG(wf::log::LOG_LEVEL_DEBUG, "trigger_show_overview bus called");
         g_variant_unref(parameters);
     }
 }
@@ -2541,7 +2575,9 @@ on_bus_acquired (GDBusConnection* connection,
                                           nullptr,
                                           nullptr,
                                           nullptr);
+#ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG, "Acquired the Bus");
+#endif
 }
 
 static void
@@ -2549,9 +2585,11 @@ on_name_acquired (GDBusConnection* connection,
                   const gchar* name,
                   gpointer user_data)
 {
+#ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG,
         "Acquired the name " + std::string(name) +
         "on the session bus\n");
+#endif
 }
 
 static void
@@ -2559,8 +2597,10 @@ on_name_lost (GDBusConnection* connection,
               const gchar* name,
               gpointer user_data)
 {
+#ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG,
         "Lost the name " + std::string(name) + "on the session bus");
+#endif
 }
 
 static void
@@ -2608,8 +2648,10 @@ dbus_thread_exec_function (gpointer user_data)
      * Event loop is killed, probably dbus plugin is
      * being unloaded
      */
+#ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG, "If you are here either dbus plugin");
     LOG(wf::log::LOG_LEVEL_DEBUG, "is being deactivated or this is a bug.");
+#endif
 
     return nullptr;
 }
