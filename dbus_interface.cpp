@@ -637,18 +637,21 @@ class dbus_interface_t
 
             view_id = view->get_id();
 
-            if ((view_id == focused_view_id) ||
-                (view->role != wf::VIEW_ROLE_TOPLEVEL))
+            if (view_id == focused_view_id)
             {
-                LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_focus_changed no view");
+                LOG(wf::log::LOG_LEVEL_DEBUG,
+                    "output_view_focus_changed no view");
 
                 return;
             }
 
-            LOG(wf::log::LOG_LEVEL_DEBUG,
-                "output_view_focus_changed: ",
-                view_id,
-                view->get_title());
+            if (view->role != wf::VIEW_ROLE_TOPLEVEL)
+            {
+                LOG(wf::log::LOG_LEVEL_DEBUG,
+                    "output_view_focus_changed not a toplevel ");
+
+                return;
+            }
 
             if (view->has_data("view-demands-attention"))
             {
