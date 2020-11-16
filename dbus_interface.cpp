@@ -4,6 +4,9 @@
  ********************************************************************/
 
 #define HAS_CUSTOM 0
+#define DBUS_PLUGIN_DEBUG TRUE
+#define DBUS_PLUGIN_WARN TRUE
+
 extern "C"
 {
 #include <gio/gio.h>
@@ -51,7 +54,10 @@ class dbus_interface_t
     /************* Connect all signals for already existing objects **************/
     dbus_interface_t()
     {
+#ifdef DBUS_PLUGIN_DEBUG
         LOG(wf::log::LOG_LEVEL_DEBUG, "Loading DBus Plugin");
+#endif
+
         settings = g_settings_new("org.wayland.compositor.dbus");
         for (wf::output_t* output : wf_outputs)
         {
@@ -93,8 +99,9 @@ class dbus_interface_t
 
             output->connect_signal("view-fullscreen-request",
                                    &view_fullscreen_changed);
-
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output connected");
+#endif
             connected_wf_outputs.insert(output);
         }
 
@@ -163,7 +170,9 @@ class dbus_interface_t
          * For my use-case it should never be unloaded.
          * Feel free to open PR for clean unloading.
          */
+#ifdef DBUS_PLUGIN_DEBUG
         LOG(wf::log::LOG_LEVEL_DEBUG, "Unloading DBus Plugin");
+#endif
 
         g_bus_unown_name(owner_id);
         g_dbus_node_info_unref(introspection_data);
@@ -180,8 +189,9 @@ class dbus_interface_t
     wf::signal_connection_t pointer_button_signal{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "pointer_button_signal");
-
+#endif
             wf::pointf_t cursor_position;
             GVariant* signal_data;
             wf::input_event_signal<wlr_event_pointer_button>* wf_ev;
@@ -224,7 +234,9 @@ class dbus_interface_t
     wf::signal_connection_t tablet_button_signal{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "tablet_button_signal");
+#endif
             bus_emit_signal("tablet_touched", nullptr);
         }
     };
@@ -235,7 +247,9 @@ class dbus_interface_t
     wf::signal_connection_t output_view_added{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_added");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -243,7 +257,9 @@ class dbus_interface_t
             view = get_signaled_view(data);
             if (!view)
             {
+#ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_added no view");
+#endif
 
                 return;
             }
@@ -266,7 +282,9 @@ class dbus_interface_t
     wf::signal_connection_t view_closed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_closed");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -275,7 +293,9 @@ class dbus_interface_t
 
             if (!view)
             {
+#ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG, "view_closed no view");
+#endif
 
                 return;
             }
@@ -292,7 +312,9 @@ class dbus_interface_t
     wf::signal_connection_t view_app_id_changed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_app_id_changed");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -300,7 +322,10 @@ class dbus_interface_t
             view = get_signaled_view(data);
             if (!view)
             {
+#ifdef DBUS_PLUGIN_DEBUG
+
                 LOG(wf::log::LOG_LEVEL_DEBUG, "view_app_id_changed no view");
+#endif
 
                 return;
             }
@@ -319,7 +344,9 @@ class dbus_interface_t
     wf::signal_connection_t view_title_changed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_title_changed");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -327,7 +354,9 @@ class dbus_interface_t
             view = get_signaled_view(data);
             if (!view)
             {
+#ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG, "view_title_changed no view");
+#endif
 
                 return;
             }
@@ -346,7 +375,9 @@ class dbus_interface_t
     wf::signal_connection_t view_fullscreen_changed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_fullscreened");
+#endif
 
             wf::view_fullscreen_signal* signal;
             GVariant* signal_data;
@@ -375,7 +406,10 @@ class dbus_interface_t
                 return;
             }
 
+#ifdef DBUS_PLUGIN_DEBUG
+
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_geometry_changed");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -400,7 +434,10 @@ class dbus_interface_t
     wf::signal_connection_t view_tiled{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
+
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_tiled");
+#endif
 
             GVariant* signal_data;
             wf::view_tiled_signal* signal;
@@ -428,7 +465,10 @@ class dbus_interface_t
     wf::signal_connection_t view_output_moved{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
+
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_output_moved");
+#endif
 
             wf::view_moved_to_output_signal* signal;
             GVariant* signal_data;
@@ -461,7 +501,9 @@ class dbus_interface_t
     wf::signal_connection_t view_output_move_requested{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_output_move_requested");
+#endif
 
             GVariant* signal_data;
             wf::view_pre_moved_to_output_signal* signal;
@@ -492,7 +534,9 @@ class dbus_interface_t
     wf::signal_connection_t role_changed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "role_changed");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -501,7 +545,9 @@ class dbus_interface_t
 
             if (!view)
             {
+#ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG, "role_changed no view");
+#endif
 
                 return;
             }
@@ -535,7 +581,9 @@ class dbus_interface_t
     wf::signal_connection_t view_workspaces_changed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_workspaces_changed");
+#endif
 
             GVariant* signal_data;
             view_change_viewport_signal* signal;
@@ -562,7 +610,9 @@ class dbus_interface_t
     wf::signal_connection_t output_view_maximized{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_maximized");
+#endif
 
             wf::view_tiled_signal* signal;
             GVariant* signal_data;
@@ -592,7 +642,10 @@ class dbus_interface_t
     wf::signal_connection_t output_view_minimized{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
+
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_minimized");
+#endif
 
             GVariant* signal_data;
             wf::view_minimize_request_signal* signal;
@@ -639,16 +692,20 @@ class dbus_interface_t
 
             if (view_id == focused_view_id)
             {
+#ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG,
                     "output_view_focus_changed no view");
+#endif
 
                 return;
             }
 
             if (view->role != wf::VIEW_ROLE_TOPLEVEL)
             {
+#ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG,
                     "output_view_focus_changed not a toplevel ");
+#endif
 
                 return;
             }
@@ -675,8 +732,10 @@ class dbus_interface_t
     wf::signal_connection_t view_focus_request{
         [=] (wf::signal_data_t* data)
         {
-            LOG(wf::log::LOG_LEVEL_DEBUG, "view_focus_request_signal");
+#ifdef DBUS_PLUGIN_DEBUG
 
+            LOG(wf::log::LOG_LEVEL_DEBUG, "view_focus_request_signal");
+#endif
             bool reconfigure = true;
             wf::view_focus_request_signal* signal;
             wayfire_view view;
@@ -739,14 +798,19 @@ class dbus_interface_t
 
             if (!view)
             {
+#ifdef DBUS_PLUGIN_DEBUG
+
                 LOG(wf::log::LOG_LEVEL_DEBUG, "view_hints_changed no view");
+#endif
 
                 return;
             }
 
+#ifdef DBUS_PLUGIN_DEBUG
+
             LOG(wf::log::LOG_LEVEL_DEBUG, "view_hints_changed",
                 view->has_data("view-demands-attention"));
-
+#endif
             if (view->has_data("view-demands-attention"))
             {
                 view_wants_attention = true;
@@ -768,7 +832,9 @@ class dbus_interface_t
     wf::signal_connection_t output_view_moving{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_moving");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -794,7 +860,9 @@ class dbus_interface_t
     wf::signal_connection_t output_view_resizing{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_view_resizing");
+#endif
 
             GVariant* signal_data;
             wayfire_view view;
@@ -870,7 +938,10 @@ class dbus_interface_t
     wf::signal_connection_t output_configuration_changed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_configuration_changed");
+#endif
+
             bus_emit_signal("output_configuration_changed", nullptr);
         }
     };
@@ -881,7 +952,9 @@ class dbus_interface_t
     wf::signal_connection_t output_workspace_changed{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_workspace_changed");
+#endif
 
             wf::workspace_changed_signal* signal;
             GVariant* signal_data;
@@ -909,8 +982,9 @@ class dbus_interface_t
     wf::signal_connection_t output_layout_output_added{
         [=] (wf::signal_data_t* data)
         {
+#ifdef DBUS_PLUGIN_DEBUG
             LOG(wf::log::LOG_LEVEL_DEBUG, "output_layout_output_added");
-
+#endif
             wf::output_t* output;
             GVariant* signal_data;
 
@@ -976,8 +1050,10 @@ class dbus_interface_t
     wf::signal_connection_t output_layout_output_removed{
         [=] (wf::signal_data_t* data)
         {
-            LOG(wf::log::LOG_LEVEL_DEBUG, "output_layout_output_removed");
+#ifdef DBUS_PLUGIN_DEBUG
 
+            LOG(wf::log::LOG_LEVEL_DEBUG, "output_layout_output_removed");
+#endif
             GVariant* signal_data;
             wf::output_t* output;
 
