@@ -2636,7 +2636,9 @@ acquire_bus ()
 static gpointer
 dbus_thread_exec_function (gpointer user_data)
 {
+#ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG, "dbus_thread_exec_function start");
+#endif
 
     GMainContext* dbus_context;
     dbus_context = static_cast<GMainContext*> (user_data);
