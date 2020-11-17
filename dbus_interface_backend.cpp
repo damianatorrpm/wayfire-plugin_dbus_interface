@@ -154,7 +154,8 @@ local_thread_shade_view (void* data)
 
     _data = static_cast<receiver_data*> (data);
     view = get_view_from_view_id(_data->view_id);
-    if (view && (_data != nullptr))
+    g_assert(_data != NULL);
+    if (view)
     {
         if (!view->is_mapped() || (view->role != wf::VIEW_ROLE_TOPLEVEL))
         {
@@ -196,20 +197,27 @@ local_thread_bring_view_to_front (void* data)
 {
     receiver_data* _data;
     wayfire_view view;
+    wf::output_t* output;
 
     _data = static_cast<receiver_data*> (data);
+    g_assert(data != NULL);
+
     view = get_view_from_view_id(_data->view_id);
     if (view)
     {
+        output = view->get_output();
 #ifdef DBUS_PLUGIN_WARN
-        if (!view->get_output())
+        if (!output)
         {
             g_warning("output missing for bring view to front.");
         }
 
 #endif
-
-        view->get_output()->workspace->bring_to_front(view);
+        else
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL))
+        {
+            output->workspace->bring_to_front(view);
+        }
     }
 
     delete _data;
@@ -316,21 +324,25 @@ local_thread_minimize (void* data)
 
     if (view)
     {
-        if ((action == 0) && view->minimized)
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+            view->get_output())
         {
-            view->minimize_request(false);
-        }
+            if ((action == 0) && view->minimized)
+            {
+                view->minimize_request(false);
+            }
 
-        else
-        if ((action == 1) && !view->minimized)
-        {
-            view->minimize_request(true);
-        }
+            else
+            if ((action == 1) && !view->minimized)
+            {
+                view->minimize_request(true);
+            }
 
-        else
-        if (action == 2)
-        {
-            view->minimize_request(!view->minimized);
+            else
+            if (action == 2)
+            {
+                view->minimize_request(!view->minimized);
+            }
         }
     }
 
@@ -349,27 +361,31 @@ local_thread_maximize (void* data)
 
     if (view)
     {
-        if (action == 0)
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+            view->get_output())
         {
-            view->tile_request(0);
-        }
-
-        else
-        if (action == 1)
-        {
-            view->tile_request(wf::TILED_EDGES_ALL);
-        }
-
-        else
-        if (action == 2)
-        {
-            if (view->tiled_edges == wf::TILED_EDGES_ALL)
+            if (action == 0)
             {
                 view->tile_request(0);
             }
+
             else
+            if (action == 1)
             {
                 view->tile_request(wf::TILED_EDGES_ALL);
+            }
+
+            else
+            if (action == 2)
+            {
+                if (view->tiled_edges == wf::TILED_EDGES_ALL)
+                {
+                    view->tile_request(0);
+                }
+                else
+                {
+                    view->tile_request(wf::TILED_EDGES_ALL);
+                }
             }
         }
     }
@@ -390,23 +406,26 @@ local_thread_fullscreen (void* data)
 
     if (view)
     {
-        output = core.get_active_output();
-
-        if (action == 0)
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL))
         {
-            view->fullscreen_request(output, false);
-        }
+            output = core.get_active_output();
 
-        else
-        if (action == 1)
-        {
-            view->fullscreen_request(output, true);
-        }
+            if (action == 0)
+            {
+                view->fullscreen_request(output, false);
+            }
 
-        else
-        if (action == 2)
-        {
-            view->fullscreen_request(output, !view->fullscreen);
+            else
+            if (action == 1)
+            {
+                view->fullscreen_request(output, true);
+            }
+
+            else
+            if (action == 2)
+            {
+                view->fullscreen_request(output, !view->fullscreen);
+            }
         }
     }
 
@@ -467,8 +486,12 @@ local_thread_change_view_minimize_hint (void* data)
 
     if (view)
     {
-        hint = {x, y, width, height};
-        view->set_minimize_hint(hint);
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+            view->get_output())
+        {
+            hint = {x, y, width, height};
+            view->set_minimize_hint(hint);
+        }
     }
 
     // core.set_active_view(view); // Does not brint it to front
@@ -513,9 +536,15 @@ local_thread_change_view_workspace (void* data)
 
     if (view)
     {
-        new_workspace_coord = {new_workspace_x, new_workspace_y};
-        output = view->get_output();
-        output->workspace->move_to_workspace(view, new_workspace_coord);
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL))
+        {
+            new_workspace_coord = {new_workspace_x, new_workspace_y};
+            output = view->get_output();
+            if (output)
+            {
+                output->workspace->move_to_workspace(view, new_workspace_coord);
+            }
+        }
     }
 
     g_variant_unref((GVariant*)data);
@@ -535,13 +564,16 @@ local_thread_change_view_output (void* data)
 
     if (view)
     {
-        output = get_output_from_output_id(output_id);
-
-        if (output)
+        if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL))
         {
-            core.move_view_to_output(view,
-                                     output,
-                                     reconfigure);
+            output = get_output_from_output_id(output_id);
+
+            if (output)
+            {
+                core.move_view_to_output(view,
+                                         output,
+                                         reconfigure);
+            }
         }
     }
 
@@ -1016,11 +1048,8 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "bring_view_to_front") == 0)
     {
-        g_variant_ref(parameters);
-
         receiver_data* data = new receiver_data;
-        g_variant_get(parameters, "(u)",
-                      &data->view_id);
+        g_variant_get(parameters, "(u)", &data->view_id);
         wl_event_loop_add_idle(core.ev_loop,
                                local_thread_bring_view_to_front,
                                static_cast<void*> (data));
@@ -1032,8 +1061,6 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "restack_view_above") == 0)
     {
-        g_variant_ref(parameters);
-
         receiver_data* data = new receiver_data;
         data->boolean1 = true;
         g_variant_get(parameters, "(uu)",
@@ -1050,8 +1077,6 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "restack_view_below") == 0)
     {
-        g_variant_ref(parameters);
-
         receiver_data* data = new receiver_data;
         data->boolean1 = false;
         g_variant_get(parameters, "(uu)",
@@ -1478,6 +1503,7 @@ handle_method_call (GDBusConnection* connection,
         uint view_id;
         int view_above = -1;
         wayfire_view view;
+        wf::output_t* output;
         std::vector<wayfire_view> workspace_views;
 
         g_variant_get(parameters, "(u)", &view_id);
@@ -1485,28 +1511,33 @@ handle_method_call (GDBusConnection* connection,
 
         if (view)
         {
-            workspace_views = view->get_output()->workspace->get_views_in_layer(
-                wf::MIDDLE_LAYERS);
-
-            for (int i = 0; i < workspace_views.size(); i++)
+            output = view->get_output();
+            if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+                output)
             {
-                wayfire_view v = workspace_views[i];
-                if (!v)
-                {
-                    continue;
-                }
+                workspace_views = view->get_output()->workspace->get_views_in_layer(
+                    wf::MIDDLE_LAYERS);
 
-                if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
+                for (int i = 0; i < workspace_views.size(); i++)
                 {
-                    continue;
-                }
-
-                if (v == view)
-                {
-                    if (i != 0)
+                    wayfire_view v = workspace_views[i];
+                    if (!v)
                     {
-                        view_above = workspace_views[i - 1]->get_id();
-                        break;
+                        continue;
+                    }
+
+                    if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
+                    {
+                        continue;
+                    }
+
+                    if (v == view)
+                    {
+                        if (i != 0)
+                        {
+                            view_above = workspace_views[i - 1]->get_id();
+                            break;
+                        }
                     }
                 }
             }
@@ -1534,6 +1565,7 @@ handle_method_call (GDBusConnection* connection,
         uint view_id;
         int view_below = -1;
         wayfire_view view;
+        wf::output_t* output;
         std::vector<wayfire_view> workspace_views;
 
         g_variant_get(parameters, "(u)", &view_id);
@@ -1541,28 +1573,33 @@ handle_method_call (GDBusConnection* connection,
 
         if (view)
         {
-            workspace_views = view->get_output()->workspace->get_views_in_layer(
-                wf::MIDDLE_LAYERS);
-
-            for (int i = 0; i < workspace_views.size(); i++)
+            output = view->get_output();
+            if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+                output)
             {
-                wayfire_view v = workspace_views[i];
-                if (!v)
-                {
-                    continue;
-                }
+                workspace_views = view->get_output()->workspace->get_views_in_layer(
+                    wf::MIDDLE_LAYERS);
 
-                if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
+                for (int i = 0; i < workspace_views.size(); i++)
                 {
-                    continue;
-                }
-
-                if (v == view)
-                {
-                    if (i != workspace_views.size() - 1)
+                    wayfire_view v = workspace_views[i];
+                    if (!v)
                     {
-                        view_below = workspace_views[i + 1]->get_id();
-                        break;
+                        continue;
+                    }
+
+                    if ((v->role != wf::VIEW_ROLE_TOPLEVEL) || !v->is_mapped())
+                    {
+                        continue;
+                    }
+
+                    if (v == view)
+                    {
+                        if (i != workspace_views.size() - 1)
+                        {
+                            view_below = workspace_views[i + 1]->get_id();
+                            break;
+                        }
                     }
                 }
             }
