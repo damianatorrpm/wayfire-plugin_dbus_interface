@@ -215,7 +215,7 @@ class dbus_interface_t
                 GVariant* _signal_data;
                 wayfire_view view;
                 view = core.get_view_at(cursor_position);
-                _signal_data = g_variant_new("(u)", view->get_id());
+                _signal_data = g_variant_new("(u)", view ? view->get_id() : 0);
                 g_variant_ref(_signal_data);
                 bus_emit_signal("view_pressed", _signal_data);
             }
