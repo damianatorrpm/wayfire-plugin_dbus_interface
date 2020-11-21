@@ -28,8 +28,8 @@ add_project_link_arguments(['-rdynamic'], language:'cpp')
 
 
 ######################### Finish ###########################
-install_data('wf-prop', install_dir: '/usr/bin/')
-install_data('org.wayland.compositor.dbus.gschema.xml', install_dir: '/usr/share/glib-2.0/schemas/')
+install_data('wf-prop', install_dir: join_paths(get_option('prefix'), 'bin'))
+install_data('org.wayland.compositor.dbus.gschema.xml', install_dir: join_paths(get_option('prefix'), 'share/glib-2.0/schemas'))
 
 
 pms = shared_module('dbus_interface', 'dbus_interface.cpp',
