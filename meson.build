@@ -31,15 +31,7 @@ add_project_link_arguments(['-rdynamic'], language:'cpp')
 schemas_dir = join_paths(get_option('prefix'), 'share/glib-2.0/schemas')
 install_data('wf-prop', install_dir: join_paths(get_option('prefix'), 'bin'))
 install_data('org.wayland.compositor.dbus.gschema.xml', install_dir: schemas_dir)
-
-r = run_command('glib-compile-schemas', schemas_dir)
-if r.returncode() == 0
-    message('\'glib-compile-schemas ' + schemas_dir + '\' succeeded')
-else
-    message(r.stdout().strip())
-    message(r.stderr().strip())
-    message('\'glib-compile-schemas ' + schemas_dir + '\' failed')
-endif
+meson.add_install_script('glib-compile-schemas', schemas_dir)
 
 pms = shared_module('dbus_interface', 'dbus_interface.cpp',
     dependencies: [wayfire, wlroots, gio, xcb, xcbres],
