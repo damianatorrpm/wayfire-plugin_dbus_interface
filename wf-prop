@@ -5,6 +5,7 @@ busctl --user call org.wayland.compositor /org/wayland/compositor org.wayland.co
 
 while read -r line; do
  if [[ $line == *"/org/wayland/compositor: org.wayland.compositor.view_pressed (uint32"* ]]; then
+    busctl --user call org.wayland.compositor /org/wayland/compositor org.wayland.compositor enable_property_mode b false
     VIEW_ID=$(echo $line| cut -d'2' -f 2)
     VIEW_ID="${VIEW_ID%,*}"
     printf "\n\n"
@@ -24,7 +25,6 @@ while read -r line; do
     # query_view_xwayland_atom_cardinal for int
     echo WID: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_xwayland_wid 0)
     echo _NET_WM_NAME: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_xwayland_atom_string 0 _NET_WM_NAME)
-    busctl --user call org.wayland.compositor /org/wayland/compositor org.wayland.compositor enable_property_mode b false
     kill $(<gdbus_pid)
  fi
 done
