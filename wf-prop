@@ -1,18 +1,7 @@
 #!/bin/bash
-# enable the mode
-trap ctrl_c INT
-
-function ctrl_c() {
-# disable the mode in the end
-# otherwise we continue to send that signal
-# which may be costly due to find_view_at(wf_point)
-# although if aborted via ctrl-c you should disable it manually afterwards
-busctl --user call org.wayland.compositor /org/wayland/compositor org.wayland.compositor enable_property_mode b false
-echo "** Disabling Signal **"
-}
 
 busctl --user call org.wayland.compositor /org/wayland/compositor org.wayland.compositor enable_property_mode b true
-gdbus monitor --session --dest org.wayland.compositor --object-path /org/wayland/compositor |
+( gdbus monitor --session --dest org.wayland.compositor --object-path /org/wayland/compositor & echo $! >&3 ) 3>gdbus_pid |
 
 while read -r line; do
  if [[ $line == *"/org/wayland/compositor: org.wayland.compositor.view_pressed (uint32"* ]]; then
@@ -23,17 +12,19 @@ while read -r line; do
     echo title: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_title 0)
     echo PID/UID/GID: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_credentials 0)
     echo active: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_active 0)
-    echo minimized: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_minimized 0)  
-    echo maximized: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_maximized 0)   
-    echo fullscreen: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_fullscreen 0) 
-    echo above: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_above 0)     
-    echo workspaces: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_workspaces 0)     
-    echo role: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_role 0)         
-    echo ****XWayland Information - no data means this native wayland window*** 
-    # Extend with properties you like 
+    echo minimized: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_minimized 0)
+    echo maximized: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_maximized 0)
+    echo fullscreen: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_fullscreen 0)
+    echo above: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_above 0)
+    echo workspaces: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_workspaces 0)
+    echo role: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_role 0)
+    echo ****XWayland Information - no data means this native wayland window***
+    # Extend with properties you like
     # query_view_xwayland_atom_string for string
     # query_view_xwayland_atom_cardinal for int
-    echo WID: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_xwayland_wid 0)    
-    echo _NET_WM_NAME: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_xwayland_atom_string 0 _NET_WM_NAME) 
+    echo WID: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_xwayland_wid 0)
+    echo _NET_WM_NAME: $(gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.query_view_xwayland_atom_string 0 _NET_WM_NAME)
+    busctl --user call org.wayland.compositor /org/wayland/compositor org.wayland.compositor enable_property_mode b false
+    kill $(<gdbus_pid)
  fi
 done

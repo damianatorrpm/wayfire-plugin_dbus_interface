@@ -81,6 +81,7 @@ wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t*> connected_wf_outputs;
 GSettings* settings;
+std::map<wf::output_t*, std::unique_ptr<wf::plugin_grab_interface_t>> grab_interfaces;
 
 uint focused_view_id;
 bool find_view_under_action = false;
@@ -1241,10 +1242,23 @@ handle_method_call (GDBusConnection* connection,
          */
         if (enable)
         {
-            core.set_cursor("grabbing");
+            for (auto& output : wf_outputs)
+            {
+                if (!output->activate_plugin(grab_interfaces[output]))
+                {
+                    continue;
+                }
+                grab_interfaces[output]->grab();
+            }
+            core.set_cursor("crosshair");
         }
         else
         {
+            for (auto& output : wf_outputs)
+            {
+                output->deactivate_plugin(grab_interfaces[output]);
+                grab_interfaces[output]->ungrab();
+            }
             core.set_cursor("default");
         }
 
