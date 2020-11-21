@@ -30,7 +30,7 @@ add_project_link_arguments(['-rdynamic'], language:'cpp')
 ######################### Finish ###########################
 schemas_dir = 'share/glib-2.0/schemas'
 install_data('wf-prop', install_dir: join_paths(get_option('prefix'), get_option('bindir')))
-install_data(join_paths(meson.source_root(), 'org.wayland.compositor.dbus.gschema.xml'),
+install_data('org.wayland.compositor.dbus.gschema.xml',
     install_dir: join_paths(get_option('prefix'), schemas_dir))
 meson.add_install_script('compile-schemas.sh', schemas_dir)
 
