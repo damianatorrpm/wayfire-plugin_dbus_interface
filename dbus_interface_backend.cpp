@@ -81,6 +81,7 @@ wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t*> connected_wf_outputs;
 GSettings* settings;
+wf::wl_idle_call idle_set_cursor;
 std::map<wf::output_t*, std::unique_ptr<wf::plugin_grab_interface_t>> grab_interfaces;
 
 uint focused_view_id;
