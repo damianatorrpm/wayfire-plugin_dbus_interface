@@ -1242,23 +1242,26 @@ handle_method_call (GDBusConnection* connection,
          */
         if (enable)
         {
-            for (auto& output : wf_outputs)
+            for (wf::output_t* output : wf_outputs)
             {
                 if (!output->activate_plugin(grab_interfaces[output]))
                 {
                     continue;
                 }
+
                 grab_interfaces[output]->grab();
             }
+
             core.set_cursor("crosshair");
         }
         else
         {
-            for (auto& output : wf_outputs)
+            for (wf::output_t* output : wf_outputs)
             {
                 output->deactivate_plugin(grab_interfaces[output]);
                 grab_interfaces[output]->ungrab();
             }
+
             core.set_cursor("default");
         }
 
@@ -1647,7 +1650,7 @@ handle_method_call (GDBusConnection* connection,
 
         if (view)
         {
-            response = g_strdup_printf(view->get_app_id().c_str());
+            response = g_strdup(view->get_app_id().c_str());
         }
 
         g_dbus_method_invocation_return_value(invocation,
@@ -1669,7 +1672,10 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
-        response = g_strdup_printf(get_gtk_shell_app_id(view).c_str());
+        if (view)
+        {
+            response = g_strdup(get_gtk_shell_app_id(view).c_str());
+        }
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
