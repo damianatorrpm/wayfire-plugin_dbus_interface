@@ -61,6 +61,9 @@ class dbus_interface_t
         settings = g_settings_new("org.wayland.compositor.dbus");
         for (wf::output_t* output : wf_outputs)
         {
+            grab_interfaces[output] = std::make_unique<wf::plugin_grab_interface_t>(output);
+            grab_interfaces[output]->name = "dbus";
+            grab_interfaces[output]->capabilities = wf::CAPABILITY_GRAB_INPUT;
             output->connect_signal("view-mapped",
                                    &output_view_added);
 
@@ -996,6 +999,10 @@ class dbus_interface_t
                 return;
             }
 
+            grab_interfaces[output] = std::make_unique<wf::plugin_grab_interface_t>(output);
+            grab_interfaces[output]->name = "dbus";
+            grab_interfaces[output]->capabilities = wf::CAPABILITY_GRAB_INPUT;
+
             output->connect_signal("wm-actions-above-changed",
                                    &on_view_keep_above);
 
@@ -1069,6 +1076,8 @@ class dbus_interface_t
                 g_variant_ref(signal_data);
                 bus_emit_signal("output_removed", signal_data);
             }
+
+            grab_interfaces.erase(output);
 
             // maybe use pre-removed instead?
         }
