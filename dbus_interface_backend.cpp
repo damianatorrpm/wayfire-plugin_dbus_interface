@@ -1252,7 +1252,10 @@ handle_method_call (GDBusConnection* connection,
                 grab_interfaces[output]->grab();
             }
 
-            core.set_cursor("crosshair");
+            idle_set_cursor.run_once([=] ()
+            {
+                core.set_cursor("crosshair");
+            });
         }
         else
         {
@@ -1262,7 +1265,10 @@ handle_method_call (GDBusConnection* connection,
                 grab_interfaces[output]->ungrab();
             }
 
-            core.set_cursor("default");
+            idle_set_cursor.run_once([=] ()
+            {
+                core.set_cursor("default");
+            });
         }
 
         g_dbus_method_invocation_return_value(invocation,
