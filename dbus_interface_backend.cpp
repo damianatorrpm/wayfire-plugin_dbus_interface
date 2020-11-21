@@ -1647,7 +1647,7 @@ handle_method_call (GDBusConnection* connection,
 
         if (view)
         {
-            response = g_strdup_printf(view->get_app_id().c_str());
+            response = g_strdup(view->get_app_id().c_str());
         }
 
         g_dbus_method_invocation_return_value(invocation,
@@ -1669,7 +1669,10 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
-        response = g_strdup_printf(get_gtk_shell_app_id(view).c_str());
+        if (view)
+        {        
+             response = g_strdup(get_gtk_shell_app_id(view).c_str());
+        }
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
