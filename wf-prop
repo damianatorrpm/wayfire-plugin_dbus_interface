@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 busctl --user call org.wayland.compositor /org/wayland/compositor org.wayland.compositor enable_property_mode b true
 ( gdbus monitor --session --dest org.wayland.compositor --object-path /org/wayland/compositor & echo $! >&3 ) 3>gdbus_pid |
