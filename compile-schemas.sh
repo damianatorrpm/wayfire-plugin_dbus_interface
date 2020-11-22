@@ -1,6 +1,6 @@
 #!/bin/bash
 
+# Only compile schemas if DESTDIR isn't set
+[ ! -z "$DESTDIR" ] && exit 0
 
-glib-compile-schemas "$MESON_INSTALL_DESTDIR_PREFIX/$1"
-
-exit 0
+exec glib-compile-schemas "$MESON_INSTALL_DESTDIR_PREFIX/$1"
