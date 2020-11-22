@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Only compile schemas if DESTDIR isn't set
 [ ! -z "$DESTDIR" ] && exit 0
