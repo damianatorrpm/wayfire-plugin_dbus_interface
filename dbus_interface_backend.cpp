@@ -81,7 +81,7 @@ wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t*> connected_wf_outputs;
 GSettings* settings;
-wf::wl_idle_call idle_set_cursor;
+wf::wl_idle_call idle_call;
 std::map<wf::output_t*, std::unique_ptr<wf::plugin_grab_interface_t>> grab_interfaces;
 
 uint focused_view_id;
@@ -496,8 +496,6 @@ local_thread_change_view_minimize_hint (void* data)
         }
     }
 
-    // core.set_active_view(view); // Does not brint it to front
-
     g_variant_unref((GVariant*)data);
 }
 
@@ -868,6 +866,9 @@ const gchar introspection_xml [] =
     "      <arg type='u' name='view_id' direction='in'/>"
     "      <arg type='u' name='view_id_now_below_view_id' direction='in'/>"
     "    </method>"
+    "    <method name='update_view_minimize_hint'>"
+    "      <arg type='u' name='view_id' direction='in'/>"
+    "    </method>"
     "    <method name='show_desktop'>"
     "      <arg type='b' name='show' direction='in'/>"
     "    </method>"
@@ -1025,13 +1026,37 @@ handle_method_call (GDBusConnection* connection,
                                local_thread_change_view_above,
                                static_cast<void*> (parameters));
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              nullptr);
+        g_dbus_method_invocation_return_value(invocation, NULL);
 
         return;
     }
 
     /*************** View Actions ****************/
+    else
+    if (g_strcmp0(method_name, "update_view_minimize_hint") == 0)
+    {
+        uint view_id;
+        g_variant_get(parameters, "(u)", &view_id);
+
+        idle_call.run_once([=] ()
+        {
+            wayfire_view view;
+            wf::pointf_t pos;
+            view = get_view_from_view_id(view_id);
+            pos = core.get_active_output()->get_cursor_position();
+            if (view)
+            {
+                if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
+                    view->get_output())
+                {
+                    view->set_minimize_hint({pos.x, pos.y, 5, 5});
+                }
+            }
+        });
+        g_dbus_method_invocation_return_value(invocation, NULL);
+
+        return;
+    }
     else
     if (g_strcmp0(method_name, "shade_view") == 0)
     {
@@ -1253,7 +1278,7 @@ handle_method_call (GDBusConnection* connection,
                 grab_interfaces[output]->grab();
             }
 
-            idle_set_cursor.run_once([=] ()
+            idle_call.run_once([=] ()
             {
                 core.set_cursor("crosshair");
             });
@@ -1266,7 +1291,7 @@ handle_method_call (GDBusConnection* connection,
                 grab_interfaces[output]->ungrab();
             }
 
-            idle_set_cursor.run_once([=] ()
+            idle_call.run_once([=] ()
             {
                 core.set_cursor("default");
             });
