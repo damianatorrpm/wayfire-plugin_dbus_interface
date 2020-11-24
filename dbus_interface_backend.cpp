@@ -808,6 +808,7 @@ handle_method_call (GDBusConnection* connection,
             else
             if (action == 1)
             {
+                view->set_activated(true);
                 view->focus_request();
             }
         });
@@ -1350,18 +1351,10 @@ handle_method_call (GDBusConnection* connection,
             {
                 if (it != workspace_views.begin())
                 {
-                    for (int i = 0; i < 10; i++)
-                    {
-                        if (it == workspace_views.begin()) {
-                            break;
-                        }
 
                         std::advance(it, -1);
                         v = *it;
-                        if (check_view_toplevel(v)) {
-                            break;
-                        }
-                    }
+            
 
                     view_above = v->get_id();
                     break;
@@ -1428,18 +1421,10 @@ handle_method_call (GDBusConnection* connection,
             {
                 if (it != workspace_views.end())
                 {
-                    for (int i = 0; i < 10; i++)
-                    {
-                        if (it == workspace_views.end()) {
-                            break;
-                        }
 
                         std::advance(it, 1);
                         v = *it;
-                        if (check_view_toplevel(v)) {
-                            break;
-                        }
-                    }
+
 
                     view_below = v->get_id();
                     break;
