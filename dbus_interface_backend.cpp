@@ -149,52 +149,6 @@ get_output_from_output_id (uint output_id)
 }
 
 static void
-local_thread_shade_view (void* data)
-{
-    receiver_data* _data;
-    wayfire_view view;
-
-    _data = static_cast<receiver_data*> (data);
-    view = get_view_from_view_id(_data->view_id);
-    g_assert(_data != NULL);
-    if (view)
-    {
-        if (!view->is_mapped() || (view->role != wf::VIEW_ROLE_TOPLEVEL))
-        {
-            return;
-        }
-
-        if (_data->double1 == 1.0)
-        {
-            if (view->get_transformer("dbus-shade"))
-            {
-                view->pop_transformer("dbus-shade");
-            }
-        }
-        else
-        {
-            wf::view_2D* transformer;
-            if (!view->get_transformer("dbus-shade"))
-            {
-                view->add_transformer(std::make_unique<wf::view_2D> (view),
-                                      "dbus-shade");
-            }
-
-            transformer = dynamic_cast<wf::view_2D*> (
-                view->get_transformer("dbus-shade").get());
-
-            if (transformer->alpha != (float)_data->double1)
-            {
-                transformer->alpha = (float)_data->double1;
-                view->damage();
-            }
-        }
-    }
-
-    receiver_data_free(_data);
-}
-
-static void
 local_thread_bring_view_to_front (void* data)
 {
     receiver_data* _data;
@@ -1060,13 +1014,50 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "shade_view") == 0)
     {
-        receiver_data* data = new receiver_data;
-        g_variant_get(parameters, "(ud)",
-                      &data->view_id,
-                      &data->double1);
-        wl_event_loop_add_idle(core.ev_loop,
-                               local_thread_shade_view,
-                               static_cast<void*> (data));
+        uint view_id;
+        double intensity;
+
+        g_variant_get(parameters, "(ud)", &view_id, &intensity);
+
+        idle_call.run_once([=] ()
+        {
+            wayfire_view view = get_view_from_view_id(view_id);
+            if (view)
+            {
+                if (!view->is_mapped() ||
+                    (view->role != wf::VIEW_ROLE_TOPLEVEL))
+                {
+                    return;
+                }
+
+                if (intensity == 1.0)
+                {
+                    if (view->get_transformer("dbus-shade"))
+                    {
+                        view->pop_transformer("dbus-shade");
+                    }
+                }
+                else
+                {
+                    wf::view_2D* transformer;
+                    if (!view->get_transformer("dbus-shade"))
+                    {
+                        view->add_transformer(std::make_unique<wf::view_2D> (
+                            view),
+                                              "dbus-shade");
+                    }
+
+                    transformer = dynamic_cast<wf::view_2D*> (
+                        view->get_transformer("dbus-shade").get());
+
+                    if (transformer->alpha != (float)intensity)
+                    {
+                        transformer->alpha = (float)intensity;
+                        view->damage();
+                    }
+                }
+            }
+        });
         g_dbus_method_invocation_return_value(invocation,
                                               nullptr);
 
