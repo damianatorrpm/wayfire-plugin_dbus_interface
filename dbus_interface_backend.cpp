@@ -1338,10 +1338,9 @@ handle_method_call (GDBusConnection* connection,
         workspace_views = view->get_output()->workspace->get_views_in_layer(
             wf::MIDDLE_LAYERS);
 
-        for (auto it = workspace_views.begin();
-             it != workspace_views.end(); ++it)
+        for (int i = 0; i < workspace_views.size() -1; i++)
         {
-            wayfire_view v = *it;
+            wayfire_view v = workspace_views[i];
             if (!check_view_toplevel(v))
             {
                 continue;
@@ -1349,14 +1348,12 @@ handle_method_call (GDBusConnection* connection,
 
             if (v == view)
             {
-                if (it != workspace_views.begin())
+                if (i != 0)
                 {
-
-                        std::advance(it, -1);
-                        v = *it;
-            
-
-                    view_above = v->get_id();
+                    if (check_view_toplevel(workspace_views[i - 1]))
+                    {
+                        view_above = workspace_views[i - 1]->get_id();
+                    }
                     break;
                 }
             }
@@ -1408,10 +1405,9 @@ handle_method_call (GDBusConnection* connection,
         workspace_views = view->get_output()->workspace->get_views_in_layer(
             wf::MIDDLE_LAYERS);
 
-        for (auto it = workspace_views.begin();
-             it != workspace_views.end(); ++it)
+        for (int i = 0; i < workspace_views.size() -1; i++)
         {
-            wayfire_view v = *it;
+            wayfire_view v = workspace_views[i];
             if (!check_view_toplevel(v))
             {
                 continue;
@@ -1419,14 +1415,12 @@ handle_method_call (GDBusConnection* connection,
 
             if (v == view)
             {
-                if (it != workspace_views.end())
+                if (i != workspace_views.size() -1)
                 {
-
-                        std::advance(it, 1);
-                        v = *it;
-
-
-                    view_below = v->get_id();
+                    if (check_view_toplevel(workspace_views[i + 1]))
+                    {
+                        view_below = workspace_views[i + 1]->get_id();
+                    }
                     break;
                 }
             }
