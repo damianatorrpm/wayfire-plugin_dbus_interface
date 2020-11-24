@@ -141,12 +141,12 @@ get_output_from_output_id (uint output_id)
 }
 
 static void
-restack_view (uint view_id, uint related_view, gboolean above)
+restack_view (uint view_id, uint related_view_id, gboolean above)
 {
     idle_call.run_once([=] ()
     {
         wayfire_view view = get_view_from_view_id(view_id);
-        wayfire_view related_view = get_view_from_view_id(related_view);
+        wayfire_view related_view = get_view_from_view_id(related_view_id);
         bool restack_above;
 
         if (!check_view_toplevel(view) || !check_view_toplevel(related_view))
@@ -1359,7 +1359,8 @@ handle_method_call (GDBusConnection* connection,
                     for (int i = 0; i < 10; i++)
                     {
                         std::advance(it, -1);
-                        if (check_view_toplevel(*it)) {
+                        v = *it;
+                        if (check_view_toplevel(v)) {
                             break;
 
                             if (it == workspace_views.begin()) {
@@ -1367,8 +1368,8 @@ handle_method_call (GDBusConnection* connection,
                             }
                         }
                     }
-
-                    view_above = *it->get_id();
+                    
+                    view_above = v->get_id();
                     break;
                 }
             }
@@ -1436,7 +1437,8 @@ handle_method_call (GDBusConnection* connection,
                     for (int i = 0; i < 10; i++)
                     {
                         std::advance(it, 1);
-                        if (check_view_toplevel(*it)) {
+                        v = *it;
+                        if (check_view_toplevel(v)) {
                             break;
 
                             if (it == workspace_views.end()) {
@@ -1444,7 +1446,7 @@ handle_method_call (GDBusConnection* connection,
                             }
                         }
                     }
-                    view_below = *it->get_id();
+                    view_below = v->get_id();
                     break;
                 }
             }
