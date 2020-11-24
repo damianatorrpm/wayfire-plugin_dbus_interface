@@ -800,21 +800,15 @@ handle_method_call (GDBusConnection* connection,
                 return;
             }
 
-            if ((action == 0) && view->minimized)
+            if (action == 0)
             {
-                view->minimize_request(false);
+                view->set_activated(false);
             }
 
             else
-            if ((action == 1) && !view->minimized)
+            if (action == 1)
             {
-                view->minimize_request(true);
-            }
-
-            else
-            if (action == 2)
-            {
-                view->minimize_request(!view->minimized);
+                view->focus_request();
             }
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
@@ -1358,17 +1352,17 @@ handle_method_call (GDBusConnection* connection,
                 {
                     for (int i = 0; i < 10; i++)
                     {
+                        if (it == workspace_views.begin()) {
+                            break;
+                        }
+
                         std::advance(it, -1);
                         v = *it;
                         if (check_view_toplevel(v)) {
                             break;
-
-                            if (it == workspace_views.begin()) {
-                                break;
-                            }
                         }
                     }
-                    
+
                     view_above = v->get_id();
                     break;
                 }
@@ -1436,16 +1430,17 @@ handle_method_call (GDBusConnection* connection,
                 {
                     for (int i = 0; i < 10; i++)
                     {
+                        if (it == workspace_views.end()) {
+                            break;
+                        }
+
                         std::advance(it, 1);
                         v = *it;
                         if (check_view_toplevel(v)) {
                             break;
-
-                            if (it == workspace_views.end()) {
-                                break;
-                            }
                         }
                     }
+
                     view_below = v->get_id();
                     break;
                 }
