@@ -2146,7 +2146,9 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "query_view_workspaces") == 0)
     {
+#ifdef DBUS_PLUGIN_DEBUG
         LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_workspaces ");
+#endif
 
         uint view_id;
         double area;
@@ -2158,20 +2160,17 @@ handle_method_call (GDBusConnection* connection,
         wf::dimensions_t workspaces;
         wf::output_t* output;
 
-        wayfire_view view;
 
         g_variant_get(parameters, "(u)", &view_id);
-        view = get_view_from_view_id(view_id);
+        wayfire_view view = get_view_from_view_id(view_id);
 
-        if (!view || (view->role == wf::VIEW_ROLE_DESKTOP_ENVIRONMENT))
+        if (!check_view_toplevel(view))
         {
 #ifdef DBUS_PLUGIN_DEBUG
 
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_workspaces no view");
 #endif
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(a(ii))",
-                                                                nullptr));
+            g_dbus_method_invocation_return_value(invocation, NULL);
 
             return;
         }
@@ -2187,8 +2186,8 @@ handle_method_call (GDBusConnection* connection,
              horizontal_workspace < workspaces.width;
              horizontal_workspace++)
         {
-            for (int vertical_workspace = 0;
-                 vertical_workspace < workspaces.height;
+            for (int vertical_workspace = 0; 
+                 vertical_workspace < workspaces.height; 
                  vertical_workspace++)
             {
                 wf::point_t ws = {horizontal_workspace, vertical_workspace};
@@ -2203,8 +2202,7 @@ handle_method_call (GDBusConnection* connection,
 
                     if (area > 0.1)
                     {
-                        g_variant_builder_add(&builder,
-                                              "(ii)",
+                        g_variant_builder_add(&builder, "(ii)",
                                               horizontal_workspace,
                                               vertical_workspace);
                     }
