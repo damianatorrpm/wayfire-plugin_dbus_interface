@@ -143,11 +143,13 @@ get_output_from_output_id (uint output_id)
 static void
 restack_view (uint view_id, uint related_view_id, gboolean above)
 {
+    if (view_id == related_view_id)
+        return;
+        
     idle_call.run_once([=] ()
     {
         wayfire_view view = get_view_from_view_id(view_id);
         wayfire_view related_view = get_view_from_view_id(related_view_id);
-        bool restack_above;
 
         if (!check_view_toplevel(view) || !check_view_toplevel(related_view))
         {
@@ -159,14 +161,14 @@ restack_view (uint view_id, uint related_view_id, gboolean above)
             return;
         }
 
-        if (!above)
+        if (above)
         {
-            view->get_output()->workspace->restack_below(
+            view->get_output()->workspace->restack_above(
                 view, related_view);
         }
         else
         {
-            view->get_output()->workspace->restack_above(
+            view->get_output()->workspace->restack_below(
                 view, related_view);
         }
     });
@@ -642,8 +644,7 @@ handle_method_call (GDBusConnection* connection,
                 if (!view->get_transformer("dbus-shade"))
                 {
                     view->add_transformer(std::make_unique<wf::view_2D> (
-                        view),
-                                          "dbus-shade");
+                        view), "dbus-shade");
                 }
 
                 transformer = dynamic_cast<wf::view_2D*> (
@@ -656,8 +657,7 @@ handle_method_call (GDBusConnection* connection,
                 }
             }
         });
-        g_dbus_method_invocation_return_value(invocation,
-                                              nullptr);
+        g_dbus_method_invocation_return_value(invocation, NULL);
 
         return;
     }
