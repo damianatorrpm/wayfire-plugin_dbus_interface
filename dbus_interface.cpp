@@ -913,7 +913,8 @@ class dbus_interface_t
      ***/
     wf::signal_connection_t output_view_decoration_changed{
         [=] (wf::signal_data_t* data)
-        {}
+        {
+        }
     };
 
     /***
@@ -921,15 +922,18 @@ class dbus_interface_t
      ***/
     wf::signal_connection_t output_detach_view{
         [=] (wf::signal_data_t* data)
-        {}
+        {
+        }
     };
     wf::signal_connection_t output_view_disappeared{
         [=] (wf::signal_data_t* data)
-        {}
+        {
+        }
     };
     wf::signal_connection_t output_view_attached{
         [=] (wf::signal_data_t* data)
-        {}
+        {
+        }
     };
 
     /******************************Output Related Slots***************************/
