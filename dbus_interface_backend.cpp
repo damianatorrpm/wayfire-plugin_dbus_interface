@@ -600,7 +600,7 @@ handle_method_call (GDBusConnection* connection,
 
         idle_call.run_once([=] ()
         {
-            wayfire_view view view = get_view_from_view_id(view_id);
+            wayfire_view view = get_view_from_view_id(view_id);
 
             if (check_view_toplevel(view))
             {
@@ -936,7 +936,7 @@ handle_method_call (GDBusConnection* connection,
         int new_workspace_x;
         int new_workspace_y;
 
-        g_variant_get(paramaeters, "(uii)", &view_id,
+        g_variant_get(parameters, "(uii)", &view_id,
                       &new_workspace_x, &new_workspace_y);
 
         idle_call.run_once([=] ()
@@ -992,8 +992,8 @@ handle_method_call (GDBusConnection* connection,
 
         idle_call.run_once([=] ()
         {
-            wf::output_t* output = get_output_from_output_id(output_id);
             wf::point_t new_workspace_coord;
+            new_workspace_coord = {new_workspace_x, new_workspace_y};
 
             for (wf::output_t* output : wf_outputs)
             {
@@ -1444,7 +1444,6 @@ handle_method_call (GDBusConnection* connection,
                             }
                         }
                     }
-
                     view_below = *it->get_id();
                     break;
                 }
