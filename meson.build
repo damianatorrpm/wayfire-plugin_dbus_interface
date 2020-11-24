@@ -13,7 +13,9 @@ project(
 )
 
 gio = dependency('gio-2.0')
-wayfire = dependency('wayfire', version: '>=0.6.0', required : true)
+giomm = dependency('giomm-2.4')
+
+wayfire = dependency('wayfire', required : true)
 wlroots = dependency('wlroots')
 wfconfig = dependency('wf-config')
 glib = dependency('glib-2.0')
@@ -40,7 +42,9 @@ pms = shared_module('dbus_interface', 'dbus_interface.cpp',
     cpp_args : ['-Wno-write-strings', '-Wno-unused-parameter', '-Wno-format-security'])
 	install_data('dbus_interface.xml', install_dir: wayfire.get_variable(pkgconfig: 'metadatadir'))
 
-
+executable('wf-prop', 'wf-prop.cpp',
+	dependencies: [gio, giomm],)
+	
 summary = [
 	'',
 	'----------------',
