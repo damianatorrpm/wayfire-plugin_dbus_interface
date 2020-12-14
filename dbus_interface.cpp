@@ -335,7 +335,7 @@ class dbus_interface_t
 
             signal_data = g_variant_new("(us)",
                                         view->get_id(),
-                                        view->get_app_id());
+                                        view->get_app_id().c_str());
             g_variant_ref(signal_data);
             bus_emit_signal("view_app_id_changed", signal_data);
         }

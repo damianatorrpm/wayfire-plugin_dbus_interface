@@ -1049,7 +1049,7 @@ handle_method_call (GDBusConnection* connection,
                 if (view->is_mapped() && (view->role == wf::VIEW_ROLE_TOPLEVEL) &&
                     view->get_output())
                 {
-                    view->set_minimize_hint({pos.x, pos.y, 5, 5});
+                    view->set_minimize_hint({(int)pos.x, (int)pos.y, 5, 5});
                 }
             }
         });
