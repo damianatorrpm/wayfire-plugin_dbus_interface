@@ -1,19 +1,19 @@
 project(
 	'wayfire-plugin-dbus_interface',
-    'c',
+	'c',
 	'cpp',
 	version: '0.3',
 	license: 'MIT',
 	meson_version: '>=0.51.0',
 	default_options: [
 		'cpp_std=c++17',
-        'c_std=c17',
+		'c_std=c17',
 		'werror=false',
 	],
 )
 
 gio = dependency('gio-2.0')
-giomm = dependency('giomm-2.4')
+giomm = dependency('giomm-2.4', required : get_option('build_wf_prop'))
 
 wayfire = dependency('wayfire', required : true)
 wlroots = dependency('wlroots')
@@ -41,15 +41,18 @@ pms = shared_module('dbus_interface', 'dbus_interface.cpp',
     cpp_args : ['-Wno-write-strings', '-Wno-unused-parameter', '-Wno-format-security'])
 	install_data('dbus_interface.xml', install_dir: wayfire.get_variable(pkgconfig: 'metadatadir'))
 
-executable('wf-prop', 'wf-prop.cpp',
-	dependencies: [gio, giomm],
-	install: true,
-)
+if get_option('build_wf_prop')
+	executable('wf-prop', 'wf-prop.cpp',
+		dependencies: [gio, giomm],
+		install: true,
+	)
+endif
 	
 summary = [
 	'',
 	'----------------',
 	'wayfire-plugins-dbus_interface @0@'.format(meson.project_version()),
+	'build wf-prop: @0@'.format(get_option('build_wf_prop')),
 	'----------------',
 	''
 ]
