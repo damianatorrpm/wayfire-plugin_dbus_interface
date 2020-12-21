@@ -31,7 +31,6 @@ add_project_link_arguments(['-rdynamic'], language:'cpp')
 
 ######################### Finish ###########################
 schemas_dir = 'share/glib-2.0/schemas'
-install_data('wf-prop', install_dir: join_paths(get_option('prefix'), get_option('bindir')))
 install_data('org.wayland.compositor.dbus.gschema.xml',
     install_dir: join_paths(get_option('prefix'), schemas_dir))
 meson.add_install_script('compile-schemas.sh', schemas_dir)
@@ -43,7 +42,9 @@ pms = shared_module('dbus_interface', 'dbus_interface.cpp',
 	install_data('dbus_interface.xml', install_dir: wayfire.get_variable(pkgconfig: 'metadatadir'))
 
 executable('wf-prop', 'wf-prop.cpp',
-	dependencies: [gio, giomm],)
+	dependencies: [gio, giomm],
+	install: true,
+)
 	
 summary = [
 	'',
