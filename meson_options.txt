@@ -1,0 +1,1 @@
+option('build_wf_prop', type : 'boolean', value : true)
