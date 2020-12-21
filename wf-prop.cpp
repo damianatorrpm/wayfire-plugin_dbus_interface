@@ -159,7 +159,7 @@ static gchar *query_output_name(guint output_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_output_name",
                                g_variant_new("(u)", output_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(s)", &value);
   g_variant_unref(tmp);
 
@@ -175,7 +175,7 @@ static std::pair<int, int> query_output_workspace(guint output_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_output_workspace",
                                g_variant_new("(u)", output_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(uu)", &x, &y);
   g_variant_unref(tmp);
 
@@ -189,7 +189,7 @@ static uint query_active_output() {
 
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_active_output", NULL,
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(u)", &value);
   g_variant_unref(tmp);
 
@@ -204,7 +204,7 @@ static uint query_view_role(uint view_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_view_role",
                                g_variant_new("(u)", view_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(u)", &value);
   g_variant_unref(tmp);
 
@@ -219,7 +219,7 @@ static gchar *query_view_app_id(uint view_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_view_app_id",
                                g_variant_new("(u)", view_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(s)", &value);
   g_variant_unref(tmp);
 
@@ -234,7 +234,7 @@ static gchar *query_view_app_id_gtk_shell(uint view_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_view_app_id_gtk_shell",
                                g_variant_new("(u)", view_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(s)", &value);
   g_variant_unref(tmp);
 
@@ -249,7 +249,7 @@ static gchar *query_view_app_id_xwayland_net_wm_name(uint view_id) {
   tmp = g_dbus_proxy_call_sync(
       proxy->gobj(), "query_view_app_id_xwayland_net_wm_name",
       g_variant_new("(u)", view_id), G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(s)", &value);
   g_variant_unref(tmp);
 
@@ -264,7 +264,7 @@ static gchar *query_view_title(uint view_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_view_title",
                                g_variant_new("(u)", view_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(s)", &value);
   g_variant_unref(tmp);
 
@@ -280,7 +280,7 @@ static int query_view_xwayland_atom_cardinal(uint view_id, const char *val) {
       g_dbus_proxy_call_sync(proxy->gobj(), "query_view_xwayland_atom_cardinal",
                              g_variant_new("(us)", view_id, val),
                              G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(u)", &value);
   g_variant_unref(tmp);
 
@@ -310,7 +310,7 @@ static uint query_view_xwayland_wid(uint view_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_view_xwayland_wid",
                                g_variant_new("(u)", view_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(u)", &value);
   g_variant_unref(tmp);
 
@@ -343,44 +343,52 @@ static void print_view_data(guint view_id) {
   tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_view_credentials",
                                g_variant_new("(u)", view_id),
                                G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
-  g_assert(error == NULL);
+  g_assert_no_error(error);
   g_variant_get(tmp, "(iuu)", &pid, &uid, &gid);
   g_variant_unref(tmp);
 
   g_print("App Id:            [%s, %s]\n", app_id, app_id_gtk);
   g_print("Title:             %s\n", title);
-  g_print("Role:              %s\n", (role == 1 ? "Toplevel Window" : "Other"));
-  g_print("Process id:        %i\n", pid);
-  g_print("User id:           %u\n", uid);
-  g_print("Group id:          %u\n", gid);
-  g_print("Active:            %s\n", (active ? "True" : "False"));
-  g_print("Minimized:         %s\n", (minimized ? "True" : "False"));
-  g_print("Maximized:         %s\n", (maximized ? "True" : "False"));
-  g_print("Fullscreen:        %s\n", (fullscreened ? "True" : "False"));
-  g_print("Workspaces:        ");
+  if (role == 1)
+      g_print("Role:              %s\n", "Toplevel Window");
+  else if (role == 2)
+      g_print("Role:              %s\n", "Desktop Environment");
+  else if (role == 3)
+      g_print("Role:              %s\n", "Unmanaged Window");
+  else
+      g_print("Role:              %s\n", "Unknown");
 
-  for (auto it = workspaces.begin(); it != workspaces.end(); ++it) {
-    std::pair<int, int> ws = *it;
-    g_print("[%i, %i]", ws.first, ws.second);
+      g_print("Process id:        %i\n", pid);
+    g_print("User id:           %u\n", uid);
+    g_print("Group id:          %u\n", gid);
+    g_print("Active:            %s\n", (active ? "True" : "False"));
+    g_print("Minimized:         %s\n", (minimized ? "True" : "False"));
+    g_print("Maximized:         %s\n", (maximized ? "True" : "False"));
+    g_print("Fullscreen:        %s\n", (fullscreened ? "True" : "False"));
+    g_print("Workspaces:        ");
+
+    for (auto it = workspaces.begin(); it != workspaces.end(); ++it) {
+      std::pair<int, int> ws = *it;
+      g_print("[%i, %i]", ws.first, ws.second);
+    }
+    g_print("\n");
+    g_print("Output:            [%u] %s\n", output, output_name);
+    g_print("Above this view:   [%i] %s\n", above_id,
+            (above_id != -1 ? above_app_id : "None"));
+    g_print("Below this view:   [%i] %s\n", below_id,
+            (below_id != -1 ? below_app_id : "None"));
+
+    if (xwid == 0)
+      g_print("\n == This is a native wayland window ==\n\n");
+    else {
+      g_print("\n == This is a xwayland window ==\n\n");
+      std::stringstream stream;
+      stream << std::hex << xwid;
+      std::string result("0x" + stream.str());
+
+      g_print("X Window id:       %s\n", result.c_str());
+    }
   }
-  g_print("\n");
-  g_print("Output:            [%u] %s\n", output, output_name);
-  g_print("Above this view:   [%i] %s\n", above_id,
-          (above_id != -1 ? above_app_id : "None"));
-  g_print("Below this view:   [%i] %s\n", below_id,
-          (below_id != -1 ? below_app_id : "None"));
-
-  if (xwid == 0)
-    g_print("\n == This is a native wayland window ==\n\n");
-  else {
-    g_print("\n == This is a xwayland window ==\n\n");
-    std::stringstream stream;
-    stream << std::hex << xwid;
-    std::string result("0x" + stream.str());
-
-    g_print("X Window id:       %s\n", result.c_str());
-  }
-}
 
 static void on_signal(GDBusConnection *connection, const gchar *sender_name,
                       const gchar *object_path, const gchar *interface_name,
@@ -388,10 +396,18 @@ static void on_signal(GDBusConnection *connection, const gchar *sender_name,
                       gpointer user_data) {
   uint view_id;
   g_variant_get(parameters, "(u)", &view_id);
+  uint _tmp = query_view_role(view_id);
 
+  if (_tmp != 1 && _tmp != 2)
+  {
+    g_print("This surface is part of the compositor.\n");
+    g_print("Please select another one.\n");
+    return;
+  }
+  
   g_dbus_proxy_call_sync(proxy->gobj(), "enable_property_mode",
-                         g_variant_new("(b)", FALSE), G_DBUS_CALL_FLAGS_NONE,
-                         -1, NULL, NULL);
+                           g_variant_new("(b)", FALSE), G_DBUS_CALL_FLAGS_NONE,
+                           -1, NULL, NULL);
   print_view_data(view_id);
   exit(0);
 };
