@@ -1711,7 +1711,8 @@ handle_method_call (GDBusConnection* connection,
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
-        g_free(response);
+        if (view)                                              
+            g_free(response);
 
         return;
     }
