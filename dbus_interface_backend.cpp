@@ -608,8 +608,8 @@ handle_method_call (GDBusConnection* connection,
             {
                 wf::pointf_t pos;
                 pos = core.get_active_output()->get_cursor_position();
-                view->set_minimize_hint({pos.x, pos.y, 5, 5});
-            g_warning("DONE: Updated view minimize hint");
+                view->set_minimize_hint({(int)pos.x, (int)pos.y, 5, 5});
+                g_warning("DONE: Updated view minimize hint");
             }
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
