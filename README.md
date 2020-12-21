@@ -6,18 +6,18 @@ Contributors: Scott Moreau
 
 ### Installation
 Standard:
-meson build && ninja -C build && ninja -C build install
-
-Additionally run sudo glib-compile-schemas /usr/share/glib-2.0/schemas/ 
-Although you may want to set --prefix=/usr if that's
-the locaiton of your wayfire installation
+meson build && ninja -C build && meson install -C build
 
 ### Coding style
 * uncrustify.ini in the repo
 * follow the style used
 * using 'auto' is strongly discouraged
 
-### Examples
+### wf-prop
+ * wf-prop l / wf-prop list for a detailed list of all taskmanger relevant (toplevel) windows.
+ * wf-prop + click on a window to query details about that window
+
+### other examples
 
 * To continuously monitor for signals 
 >gdbus monitor --session --dest org.wayland.compositor --object-path /org/wayland/compositor"
