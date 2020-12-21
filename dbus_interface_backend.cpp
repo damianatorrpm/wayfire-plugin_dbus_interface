@@ -1452,19 +1452,17 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
-            response = g_strdup(view->get_app_id().c_str());
+        if (!check_view_toplevel(view)) {
+          g_dbus_method_invocation_return_value(invocation,
+                                                g_variant_new("(s)", response));
+          return;
         }
 
+        response = g_strdup(view->get_app_id().c_str());        
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)",
                                                             response));
-        if (view)
-        {
-            g_free(response);
-        }
-
+         g_free(response);
         return;
     }
     else
@@ -1476,15 +1474,17 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
-        if (view)
-        {
-            response = g_strdup(get_gtk_shell_app_id(view).c_str());
+
+        if (!check_view_toplevel(view)) {
+          g_dbus_method_invocation_return_value(invocation,
+                                                g_variant_new("(s)", response));
+          return;
         }
 
+        response = g_strdup(get_gtk_shell_app_id(view).c_str());
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
         g_free(response);
-
         return;
     }
     else
@@ -1548,19 +1548,17 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
-            response = g_strdup_printf(view->get_title().c_str());
+        if (!check_view_toplevel(view)) {
+          g_dbus_method_invocation_return_value(invocation,
+                                                g_variant_new("(s)", response));
+          return;
         }
 
+        response = g_strdup_printf(view->get_title().c_str());
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)",
                                                             response));
-        if (view)
-        {
-            g_free(response);
-        }
-
+        g_free(response);
         return;
     }
     else
@@ -1572,14 +1570,15 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
+        if (!check_view_toplevel(view)) {
+          return;
+        }
 
-        if (view)
-        {
             if (view->has_data("view-demands-attention"))
             {
                 attention = true;
             }
-        }
+        
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(b)",
