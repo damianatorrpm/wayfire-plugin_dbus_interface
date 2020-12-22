@@ -699,7 +699,7 @@ handle_method_call (GDBusConnection* connection,
     {
         uint view_id;
         uint related_view_id;
-        g_variant_get(parameters, "(uu)", &view_id, related_view_id);
+        g_variant_get(parameters, "(uu)", &view_id, &related_view_id);
         restack_view(view_id, related_view_id, FALSE);
         g_dbus_method_invocation_return_value(invocation, NULL);
 
