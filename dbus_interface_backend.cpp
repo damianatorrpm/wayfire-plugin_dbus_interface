@@ -546,7 +546,7 @@ handle_method_call (GDBusConnection* connection,
                     gpointer user_data)
 {
 #ifdef DBUS_PLUGIN_DEBUG
-    LOG(wf::log::LOG_LEVEL_DEBUG, "handle_method_call bus called", method_name);
+    LOG(wf::log::LOG_LEVEL_DEBUG, "handle_method_call bus called ", method_name);
 #endif
 
     if (g_strcmp0(method_name, "change_view_above") == 0)
@@ -688,7 +688,7 @@ handle_method_call (GDBusConnection* connection,
     {
         uint view_id;
         uint related_view_id;
-        g_variant_get(parameters, "(uu)", &view_id, related_view_id);
+        g_variant_get(parameters, "(uu)", &view_id, &related_view_id);
         restack_view(view_id, related_view_id, TRUE);
         g_dbus_method_invocation_return_value(invocation, NULL);
 

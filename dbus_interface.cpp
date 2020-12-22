@@ -697,7 +697,7 @@ class dbus_interface_t
             {
 #ifdef DBUS_PLUGIN_DEBUG
                 LOG(wf::log::LOG_LEVEL_DEBUG,
-                    "output_view_focus_changed no view");
+                    "output_view_focus_changed old focus view");
 #endif
 
                 return;
