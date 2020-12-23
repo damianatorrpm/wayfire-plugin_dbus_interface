@@ -2,7 +2,7 @@ DBus Wayfire plugin
 
 Authors: Damian Ivanov
 
-Contributors: Scott Moreau
+Contributors: https://github.com/damianatorrpm/wayfire-plugin_dbus_interface/graphs/contributors
 
 ### Installation
 Standard:
