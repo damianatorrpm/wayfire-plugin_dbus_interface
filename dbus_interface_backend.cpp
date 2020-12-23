@@ -1026,7 +1026,7 @@ handle_method_call (GDBusConnection* connection,
         gchar* app_id = nullptr;
         g_variant_get(parameters, "(bs)", &all_workspaces, &app_id);
 
-        idle_call.run_once([all_workspaces, app_id = std::string(app_id)]() {
+        idle_call.run_once([all_workspaces, app_id = std::string(app_id)] () {
             wf::output_t* output = core.get_active_output();
             auto filter = dbus_scale_filter::get(output);
             filter->set_filter(std::move(app_id));
