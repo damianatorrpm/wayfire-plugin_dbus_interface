@@ -52,6 +52,7 @@ extern "C"
 #include <wayfire/util.hpp>
 #include <wayfire/gtk-shell.hpp>
 #include "wayfire/view-transform.hpp"
+#include "dbus_scale_filter.hpp"
 
 wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
 
@@ -402,6 +403,10 @@ const gchar introspection_xml [] =
     "    <method name='show_desktop'>"
     "      <arg type='b' name='show' direction='in'/>"
     "    </method>"
+    "   <method name='scale'>"
+    "     <arg type='b' name='all_workspaces' direction='in'/>"
+    "     <arg type='s' name='app_id_filter' direction='in'/>"
+    "   </method>"
     /************************* Signals ************************/
     /***
      * Core Input Signals
@@ -1013,6 +1018,33 @@ handle_method_call (GDBusConnection* connection,
         g_dbus_method_invocation_return_value(invocation, NULL);
 
         return;
+    }
+    else
+    if (g_strcmp0(method_name, "scale") == 0)
+    {
+        gboolean all_workspaces = FALSE;
+        gchar* app_id = nullptr;
+        g_variant_get(parameters, "(bs)", &all_workspaces, &app_id);
+
+        idle_call.run_once([all_workspaces, app_id = std::string(app_id)] () {
+            wf::output_t* output = core.get_active_output();
+            auto filter = dbus_scale_filter::get(output);
+            filter->set_filter(std::move(app_id));
+
+            if (output->is_plugin_active("scale"))
+            {
+                output->emit_signal("scale-update", nullptr);
+            }
+            else
+            {
+                wf::activator_data_t adata;
+                adata.source = wf::activator_source_t::PLUGIN;
+                output->call_plugin(all_workspaces ? "scale/toggle_all" : "scale/toggle", adata);
+            }
+        });
+
+        g_dbus_method_invocation_return_value(invocation,
+                                              nullptr);
     }
 
     /*************** Non-reffing actions at end ****************/
@@ -2515,3 +2547,4 @@ dbus_thread_exec_function (gpointer user_data)
 
     return nullptr;
 }
+
