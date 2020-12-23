@@ -60,7 +60,6 @@ wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t*> connected_wf_outputs;
 GSettings* settings;
-wf::wl_idle_call idle_call;
 std::map<wf::output_t*, std::unique_ptr<wf::plugin_grab_interface_t>> grab_interfaces;
 
 uint focused_view_id;
@@ -144,21 +143,27 @@ get_output_from_output_id (uint output_id)
 static void
 restack_view (uint view_id, uint related_view_id, gboolean above)
 {
-    if (view_id == related_view_id)
+    if (view_id == related_view_id) {
         return;
-        
-    idle_call.run_once([=] ()
+    }
+
+    wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+    idle_call->run_once([=] ()
     {
         wayfire_view view = get_view_from_view_id(view_id);
         wayfire_view related_view = get_view_from_view_id(related_view_id);
 
         if (!check_view_toplevel(view) || !check_view_toplevel(related_view))
         {
+            delete idle_call;
+
             return;
         }
 
         wf::output_t* output = view->get_output();
         if (!output) {
+            delete idle_call;
+
             return;
         }
 
@@ -172,6 +177,8 @@ restack_view (uint view_id, uint related_view_id, gboolean above)
             view->get_output()->workspace->restack_below(
                 view, related_view);
         }
+
+        delete idle_call;
     });
 }
 
@@ -560,11 +567,14 @@ handle_method_call (GDBusConnection* connection,
         uint action;
 
         g_variant_get(parameters, "(uu)", &view_id, &action);
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
             if (!check_view_toplevel(view))
             {
+                delete idle_call;
+
                 return;
             }
 
@@ -591,6 +601,8 @@ handle_method_call (GDBusConnection* connection,
                 signal_data.view = view;
                 output->emit_signal("wm-actions-toggle-above", &signal_data);
             }
+
+            delete idle_call;
         });
 
         g_dbus_method_invocation_return_value(invocation, NULL);
@@ -604,18 +616,18 @@ handle_method_call (GDBusConnection* connection,
     {
         uint view_id;
         g_variant_get(parameters, "(u)", &view_id);
-
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            g_warning("Update view minimize hint");
-            if (check_view_toplevel(view))
-            {
+
+            if (check_view_toplevel(view)) {
                 wf::pointf_t pos;
                 pos = core.get_active_output()->get_cursor_position();
                 view->set_minimize_hint({(int)pos.x, (int)pos.y, 5, 5});
-                g_warning("DONE: Updated view minimize hint");
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -628,12 +640,14 @@ handle_method_call (GDBusConnection* connection,
         double intensity;
 
         g_variant_get(parameters, "(ud)", &view_id, &intensity);
-
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
             if (!check_view_toplevel(view))
             {
+                delete idle_call;
+
                 return;
             }
 
@@ -662,6 +676,8 @@ handle_method_call (GDBusConnection* connection,
                     view->damage();
                 }
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -673,15 +689,17 @@ handle_method_call (GDBusConnection* connection,
         uint view_id;
         g_variant_get(parameters, "(u)", &view_id);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
 
-            if (check_view_toplevel(view))
-            {
+            if (check_view_toplevel(view)) {
                 wf::output_t* output = view->get_output();
                 output->workspace->bring_to_front(view);
             }
+
+            delete idle_call;
         });
 
         g_dbus_method_invocation_return_value(invocation, NULL);
@@ -718,16 +736,17 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(uu)", &view_id, &action);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
+                delete idle_call;
+
                 return;
             }
 
-            if ((action == 0) && view->minimized)
-            {
+            if ((action == 0) && view->minimized) {
                 view->minimize_request(false);
             }
 
@@ -742,6 +761,8 @@ handle_method_call (GDBusConnection* connection,
             {
                 view->minimize_request(!view->minimized);
             }
+
+            delete idle_call;
         });
 
         g_dbus_method_invocation_return_value(invocation, NULL);
@@ -755,16 +776,17 @@ handle_method_call (GDBusConnection* connection,
         uint action;
         g_variant_get(parameters, "(uu)", &view_id, &action);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
+                delete idle_call;
+
                 return;
             }
 
-            if (action == 0)
-            {
+            if (action == 0) {
                 view->tile_request(0);
             }
 
@@ -777,8 +799,7 @@ handle_method_call (GDBusConnection* connection,
             else
             if (action == 2)
             {
-                if (view->tiled_edges == wf::TILED_EDGES_ALL)
-                {
+                if (view->tiled_edges == wf::TILED_EDGES_ALL) {
                     view->tile_request(0);
                 }
                 else
@@ -786,6 +807,8 @@ handle_method_call (GDBusConnection* connection,
                     view->tile_request(wf::TILED_EDGES_ALL);
                 }
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -798,11 +821,14 @@ handle_method_call (GDBusConnection* connection,
         uint action;
         g_variant_get(parameters, "(uu)", &view_id, &action);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
             if (!check_view_toplevel(view))
             {
+                delete idle_call;
+
                 return;
             }
 
@@ -817,6 +843,8 @@ handle_method_call (GDBusConnection* connection,
                 view->set_activated(true);
                 view->focus_request();
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -829,18 +857,19 @@ handle_method_call (GDBusConnection* connection,
         uint action;
         g_variant_get(parameters, "(uu)", &view_id, &action);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
+                delete idle_call;
+
                 return;
             }
 
             wf::output_t* output = core.get_active_output();
 
-            if (action == 0)
-            {
+            if (action == 0) {
                 view->fullscreen_request(output, false);
             }
 
@@ -855,6 +884,8 @@ handle_method_call (GDBusConnection* connection,
             {
                 view->fullscreen_request(output, !view->fullscreen);
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -866,14 +897,16 @@ handle_method_call (GDBusConnection* connection,
         uint view_id;
         g_variant_get(parameters, "(u)", &view_id);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
 
-            if (check_view_toplevel(view))
-            {
+            if (check_view_toplevel(view)) {
                 view->close();
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -887,15 +920,18 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(uiiii)", &view_id, &x, &y, &width, &height);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
+                delete idle_call;
+
                 return;
             }
 
             view->set_minimize_hint({x, y, width, height});
+            delete idle_call;
         });
 
         g_dbus_method_invocation_return_value(invocation,
@@ -912,11 +948,14 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(uu)", &view_id, &output_id);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
             if (!check_view_toplevel(view))
             {
+                delete idle_call;
+
                 return;
             }
 
@@ -925,6 +964,8 @@ handle_method_call (GDBusConnection* connection,
             {
                 core.move_view_to_output(view, output, TRUE);
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -940,17 +981,21 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(uii)", &view_id,
                       &new_workspace_x, &new_workspace_y);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
             if (!check_view_toplevel(view))
             {
+                delete idle_call;
+
                 return;
             }
 
             wf::point_t new_workspace_coord = {new_workspace_x, new_workspace_y};
             wf::output_t* output = view->get_output();
             output->workspace->move_to_workspace(view, new_workspace_coord);
+            delete idle_call;
         });
 
         g_dbus_method_invocation_return_value(invocation, NULL);
@@ -967,7 +1012,8 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(uii)", &output_id,
                       &new_workspace_x, &new_workspace_y);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wf::output_t* output = get_output_from_output_id(output_id);
 
@@ -978,6 +1024,8 @@ handle_method_call (GDBusConnection* connection,
                 output->workspace->request_workspace(new_workspace_coord);
                 // Provides animation if available
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -991,7 +1039,8 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(ii)", &new_workspace_x, &new_workspace_y);
 
-        idle_call.run_once([=] ()
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
         {
             wf::point_t new_workspace_coord;
             new_workspace_coord = {new_workspace_x, new_workspace_y};
@@ -1003,6 +1052,8 @@ handle_method_call (GDBusConnection* connection,
                     output->workspace->request_workspace(new_workspace_coord);
                 }
             }
+
+            delete idle_call;
         });
         g_dbus_method_invocation_return_value(invocation, NULL);
 
@@ -1026,7 +1077,9 @@ handle_method_call (GDBusConnection* connection,
         gchar* app_id = nullptr;
         g_variant_get(parameters, "(bs)", &all_workspaces, &app_id);
 
-        idle_call.run_once([all_workspaces, app_id = std::string(app_id)] () {
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([all_workspaces, app_id = std::string(app_id), idle_call] ()
+        {
             wf::output_t* output = core.get_active_output();
             auto filter = dbus_scale_filter::get(output);
             filter->set_filter(std::move(app_id));
@@ -1041,6 +1094,8 @@ handle_method_call (GDBusConnection* connection,
                 adata.source = wf::activator_source_t::PLUGIN;
                 output->call_plugin(all_workspaces ? "scale/toggle_all" : "scale/toggle", adata);
             }
+
+            delete idle_call;
         });
 
         g_dbus_method_invocation_return_value(invocation,
@@ -1072,9 +1127,11 @@ handle_method_call (GDBusConnection* connection,
                 grab_interfaces[output]->grab();
             }
 
-            idle_call.run_once([=] ()
+            wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+            idle_call->run_once([core, idle_call] ()
             {
                 core.set_cursor("crosshair");
+                delete idle_call;
             });
         }
         else
@@ -1085,9 +1142,11 @@ handle_method_call (GDBusConnection* connection,
                 grab_interfaces[output]->ungrab();
             }
 
-            idle_call.run_once([=] ()
+            wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+            idle_call->run_once([=] ()
             {
                 core.set_cursor("default");
+                delete idle_call;
             });
         }
 
@@ -1371,7 +1430,7 @@ handle_method_call (GDBusConnection* connection,
         workspace_views = view->get_output()->workspace->get_views_in_layer(
             wf::MIDDLE_LAYERS);
 
-        for (int i = 0; i < workspace_views.size() -1; i++)
+        for (int i = 0; i < workspace_views.size() - 1; i++)
         {
             wayfire_view v = workspace_views[i];
             if (!check_view_toplevel(v))
@@ -1387,6 +1446,7 @@ handle_method_call (GDBusConnection* connection,
                     {
                         view_above = workspace_views[i - 1]->get_id();
                     }
+
                     break;
                 }
             }
@@ -1438,7 +1498,7 @@ handle_method_call (GDBusConnection* connection,
         workspace_views = view->get_output()->workspace->get_views_in_layer(
             wf::MIDDLE_LAYERS);
 
-        for (int i = 0; i < workspace_views.size() -1; i++)
+        for (int i = 0; i < workspace_views.size() - 1; i++)
         {
             wayfire_view v = workspace_views[i];
             if (!check_view_toplevel(v))
@@ -1448,12 +1508,13 @@ handle_method_call (GDBusConnection* connection,
 
             if (v == view)
             {
-                if (i != workspace_views.size() -1)
+                if (i != workspace_views.size() - 1)
                 {
                     if (check_view_toplevel(workspace_views[i + 1]))
                     {
                         view_below = workspace_views[i + 1]->get_id();
                     }
+
                     break;
                 }
             }
@@ -1485,16 +1546,18 @@ handle_method_call (GDBusConnection* connection,
         view = get_view_from_view_id(view_id);
 
         if (!check_view_toplevel(view)) {
-          g_dbus_method_invocation_return_value(invocation,
-                                                g_variant_new("(s)", response));
-          return;
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(s)", response));
+
+            return;
         }
 
-        response = g_strdup(view->get_app_id().c_str());        
+        response = g_strdup(view->get_app_id().c_str());
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)",
                                                             response));
-         g_free(response);
+        g_free(response);
+
         return;
     }
     else
@@ -1508,15 +1571,17 @@ handle_method_call (GDBusConnection* connection,
         view = get_view_from_view_id(view_id);
 
         if (!check_view_toplevel(view)) {
-          g_dbus_method_invocation_return_value(invocation,
-                                                g_variant_new("(s)", response));
-          return;
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(s)", response));
+
+            return;
         }
 
         response = g_strdup(get_gtk_shell_app_id(view).c_str());
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
         g_free(response);
+
         return;
     }
     else
@@ -1581,9 +1646,10 @@ handle_method_call (GDBusConnection* connection,
         view = get_view_from_view_id(view_id);
 
         if (!check_view_toplevel(view)) {
-          g_dbus_method_invocation_return_value(invocation,
-                                                g_variant_new("(s)", response));
-          return;
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(s)", response));
+
+            return;
         }
 
         response = g_strdup_printf(view->get_title().c_str());
@@ -1591,6 +1657,7 @@ handle_method_call (GDBusConnection* connection,
                                               g_variant_new("(s)",
                                                             response));
         g_free(response);
+
         return;
     }
     else
@@ -1603,14 +1670,13 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
         if (!check_view_toplevel(view)) {
-          return;
+            return;
         }
 
-            if (view->has_data("view-demands-attention"))
-            {
-                attention = true;
-            }
-        
+        if (view->has_data("view-demands-attention"))
+        {
+            attention = true;
+        }
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(b)",
@@ -2192,7 +2258,6 @@ handle_method_call (GDBusConnection* connection,
         wf::dimensions_t workspaces;
         wf::output_t* output;
 
-
         g_variant_get(parameters, "(u)", &view_id);
         wayfire_view view = get_view_from_view_id(view_id);
 
@@ -2218,8 +2283,8 @@ handle_method_call (GDBusConnection* connection,
              horizontal_workspace < workspaces.width;
              horizontal_workspace++)
         {
-            for (int vertical_workspace = 0; 
-                 vertical_workspace < workspaces.height; 
+            for (int vertical_workspace = 0;
+                 vertical_workspace < workspaces.height;
                  vertical_workspace++)
             {
                 wf::point_t ws = {horizontal_workspace, vertical_workspace};
@@ -2547,4 +2612,3 @@ dbus_thread_exec_function (gpointer user_data)
 
     return nullptr;
 }
-

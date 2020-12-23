@@ -112,4 +112,3 @@ class dbus_scale_filter : public wf::custom_data_t
 };
 
 #endif
-
