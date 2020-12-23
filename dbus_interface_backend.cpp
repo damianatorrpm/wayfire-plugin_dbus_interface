@@ -175,32 +175,6 @@ restack_view (uint view_id, uint related_view_id, gboolean above)
     });
 }
 
-static void
-local_thread_start_scale (void* data)
-{
-    GVariant* var = static_cast<GVariant*> (data);
-    gboolean all_workspaces = FALSE;
-    gchar* app_id = nullptr;
-    g_variant_get(var, "(bs)", &all_workspaces, &app_id);
-
-    wf::output_t* output = core.get_active_output();
-    auto filter = dbus_scale_filter::get(output);
-    filter->set_filter(std::string(app_id));
-
-    if (output->is_plugin_active("scale"))
-    {
-        output->emit_signal("scale-update", nullptr);
-    }
-    else
-    {
-        wf::activator_data_t adata;
-        adata.source = wf::activator_source_t::PLUGIN;
-        output->call_plugin(all_workspaces ? "scale/toggle_all" : "scale/toggle", adata);
-    }
-
-    g_variant_unref(var);
-}
-
 /*
  * It is a deliberate design choice to have
  * methods / signals instead of properties
@@ -1048,10 +1022,27 @@ handle_method_call (GDBusConnection* connection,
     else
     if (g_strcmp0(method_name, "scale") == 0)
     {
-        g_variant_ref(parameters);
-        wl_event_loop_add_idle(core.ev_loop,
-                               local_thread_start_scale,
-                               static_cast<void*> (parameters));
+        gboolean all_workspaces = FALSE;
+        gchar* app_id = nullptr;
+        g_variant_get(parameters, "(bs)", &all_workspaces, &app_id);
+
+        idle_call.run_once([all_workspaces, app_id = std::string(app_id)]() {
+            wf::output_t* output = core.get_active_output();
+            auto filter = dbus_scale_filter::get(output);
+            filter->set_filter(std::move(app_id));
+
+            if (output->is_plugin_active("scale"))
+            {
+                output->emit_signal("scale-update", nullptr);
+            }
+            else
+            {
+                wf::activator_data_t adata;
+                adata.source = wf::activator_source_t::PLUGIN;
+                output->call_plugin(all_workspaces ? "scale/toggle_all" : "scale/toggle", adata);
+            }
+        });
+
         g_dbus_method_invocation_return_value(invocation,
                                               nullptr);
     }
