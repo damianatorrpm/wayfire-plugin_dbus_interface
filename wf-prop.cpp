@@ -347,6 +347,7 @@ static void print_view_data(guint view_id) {
   g_variant_get(tmp, "(iuu)", &pid, &uid, &gid);
   g_variant_unref(tmp);
 
+  g_print("View Id:           %u\n", view_id);
   g_print("App Id:            [%s, %s]\n", app_id, app_id_gtk);
   g_print("Title:             %s\n", title);
   if (role == 1)
@@ -400,7 +401,7 @@ static void on_signal(GDBusConnection *connection, const gchar *sender_name,
 
   if (_tmp != 1 && _tmp != 2)
   {
-    g_print("This surface is part of the compositor.\n");
+    g_print("This surface is part of the desktop/compositor. Role: %u\n", _tmp);
     g_print("Please select another one.\n");
     return;
   }
