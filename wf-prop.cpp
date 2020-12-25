@@ -433,7 +433,7 @@ print_view_data (guint view_id)
             (below_id != -1 ? below_app_id : "None"));
 
     if (xwid == 0) {
-        g_print("\n == This is a native wayland window ==\n\n");
+        g_print("\n == This is a native wayland window ==\n");
     }
     else
     {
@@ -441,8 +441,10 @@ print_view_data (guint view_id)
         std::stringstream stream;
         stream << std::hex << xwid;
         std::string result("0x" + stream.str());
-
         g_print("X Window id:       %s\n", result.c_str());
+        g_print("Run xwininfo -all -id %s and/or xprop -id %s for more "
+                "information.\n",
+                result.c_str(), result.c_str());
     }
 }
 
@@ -540,7 +542,9 @@ main (int argc, char* argv [])
                 g_variant_iter_init(&iter2, child);
                 while ((cchild = g_variant_iter_next_value(&iter2)))
                 {
-                    print_view_data(g_variant_get_uint32(cchild));
+                  g_print("***************************************\n");
+                  print_view_data(g_variant_get_uint32(cchild));
+                  g_print("***************************************\n\n");
                 }
             }
 
