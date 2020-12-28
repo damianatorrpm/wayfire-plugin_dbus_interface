@@ -1089,5 +1089,5 @@ class dbus_interface_t
     };
 };
 
-DECLARE_WAYFIRE_PLUGIN((wf::singleton_plugin_t<dbus_interface_t, true>));
+DECLARE_WAYFIRE_PLUGIN((wf::singleton_plugin_t<dbus_interface_t, false>));
 // bool = unloadable
