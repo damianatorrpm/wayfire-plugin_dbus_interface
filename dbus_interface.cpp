@@ -149,7 +149,7 @@ class dbus_interface_t
         geometry_signal = g_settings_get_boolean(settings, "geometry-signal");
 
         acquire_bus();
-        core.run("dbus-update-activation-environment --systemd --all");
+        //core.run("dbus-update-activation-environment --systemd --all");
     }
 
     ~dbus_interface_t()
