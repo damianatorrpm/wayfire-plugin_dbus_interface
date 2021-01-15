@@ -5,14 +5,13 @@
 #define DBUS_PLUGIN_DEBUG TRUE
 #define DBUS_PLUGIN_WARN TRUE
 
-extern "C"
-{
+extern "C" {
 #define class class_t
 #define static
-#include <wlr/xwayland.h>
 #include <X11/Xatom.h>
-#include <xcb/xcb.h>
+#include <wlr/xwayland.h>
 #include <xcb/res.h>
+#include <xcb/xcb.h>
 // #include <xwayland/xwm.h>
 #undef static
 #undef class
@@ -23,36 +22,29 @@ extern "C"
 
 #include <ctime>
 #include <iostream>
-#include <set>
 #include <list>
+#include <set>
 
 #include <unistd.h>
-#include <functional>
 
-#include <wayfire/output.hpp>
-#include <wayfire/output-layout.hpp>
-#include <wayfire/workspace-manager.hpp>
-#include <wayfire/plugins/common/view-change-viewport-signal.hpp>
-#include <wayfire/core.hpp>
-#include <wayfire/util/log.hpp>
-#include <wayfire/option-wrapper.hpp>
-#include <wayfire/signal-definitions.hpp>
-#include <wayfire/view.hpp>
-#include <wayfire/plugin.hpp>
-#include <wayfire/output.hpp>
-#include <wayfire/core.hpp>
-#include <wayfire/view.hpp>
-#include <wayfire/util/duration.hpp>
-#include <wayfire/workspace-manager.hpp>
-#include <wayfire/render-manager.hpp>
+#include "dbus_scale_filter.hpp"
+#include "wayfire/view-transform.hpp"
 #include <wayfire/compositor-view.hpp>
-#include <wayfire/output-layout.hpp>
+#include <wayfire/core.hpp>
 #include <wayfire/debug.hpp>
+#include <wayfire/gtk-shell.hpp>
+#include <wayfire/option-wrapper.hpp>
+#include <wayfire/output-layout.hpp>
+#include <wayfire/output.hpp>
+#include <wayfire/plugin.hpp>
+#include <wayfire/plugins/common/view-change-viewport-signal.hpp>
+#include <wayfire/render-manager.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util.hpp>
-#include <wayfire/gtk-shell.hpp>
-#include "wayfire/view-transform.hpp"
-#include "dbus_scale_filter.hpp"
+#include <wayfire/util/duration.hpp>
+#include <wayfire/util/log.hpp>
+#include <wayfire/view.hpp>
+#include <wayfire/workspace-manager.hpp>
 
 wf::option_wrapper_t<bool> xwayland_enabled("core/xwayland");
 
@@ -60,15 +52,13 @@ wf::compositor_core_t& core = wf::get_core();
 std::vector<wf::output_t*> wf_outputs = core.output_layout->get_outputs();
 std::set<wf::output_t*> connected_wf_outputs;
 GSettings* settings;
-std::map<wf::output_t*, std::unique_ptr<wf::plugin_grab_interface_t>> grab_interfaces;
+std::map<wf::output_t*, std::unique_ptr<wf::plugin_grab_interface_t>>
+grab_interfaces;
 
 uint focused_view_id;
 bool find_view_under_action = false;
 GDBusNodeInfo* introspection_data = nullptr;
 GDBusConnection* dbus_connection;
-GMainContext* dbus_context;
-GMainLoop* dbus_event_loop;
-GThread* dbus_thread;
 uint owner_id;
 
 static gboolean
@@ -102,11 +92,9 @@ get_view_from_view_id (uint view_id)
     view_vector = core.get_all_views();
 
     // there is no view_id 0 use it as get_active_view(hint)
-    if (view_id == 0)
-    {
+    if (view_id == 0) {
         view = core.get_cursor_focus_view();
-        if (check_view_toplevel(view))
-        {
+        if (check_view_toplevel(view)) {
             return view;
         }
     }
@@ -114,10 +102,8 @@ get_view_from_view_id (uint view_id)
     for (auto it = view_vector.begin(); it != view_vector.end(); ++it)
     {
         wayfire_view v = *it;
-        if (check_view_toplevel(v))
-        {
-            if (v->get_id() == view_id)
-            {
+        if (check_view_toplevel(v)) {
+            if (v->get_id() == view_id) {
                 return v;
             }
         }
@@ -131,8 +117,7 @@ get_output_from_output_id (uint output_id)
 {
     for (wf::output_t* wf_output : wf_outputs)
     {
-        if (wf_output->get_id() == output_id)
-        {
+        if (wf_output->get_id() == output_id) {
             return wf_output;
         }
     }
@@ -153,8 +138,7 @@ restack_view (uint view_id, uint related_view_id, gboolean above)
         wayfire_view view = get_view_from_view_id(view_id);
         wayfire_view related_view = get_view_from_view_id(related_view_id);
 
-        if (!check_view_toplevel(view) || !check_view_toplevel(related_view))
-        {
+        if (!check_view_toplevel(view) || !check_view_toplevel(related_view)) {
             delete idle_call;
 
             return;
@@ -167,15 +151,12 @@ restack_view (uint view_id, uint related_view_id, gboolean above)
             return;
         }
 
-        if (above)
-        {
-            view->get_output()->workspace->restack_above(
-                view, related_view);
+        if (above) {
+            view->get_output()->workspace->restack_above(view, related_view);
         }
         else
         {
-            view->get_output()->workspace->restack_below(
-                view, related_view);
+            view->get_output()->workspace->restack_below(view, related_view);
         }
 
         delete idle_call;
@@ -414,6 +395,9 @@ const gchar introspection_xml [] =
     "     <arg type='b' name='all_workspaces' direction='in'/>"
     "     <arg type='s' name='app_id_filter' direction='in'/>"
     "   </method>"
+    "   <method name='ensure_view_visible'>"
+    "     <arg type='u' name='view_id' direction='in'/>"
+    "   </method>"
     /************************* Signals ************************/
     /***
      * Core Input Signals
@@ -548,12 +532,10 @@ const gchar introspection_xml [] =
     "</node>";
 
 static void
-handle_method_call (GDBusConnection* connection,
-                    const gchar* sender,
+handle_method_call (GDBusConnection* connection, const gchar* sender,
                     const gchar* object_path,
                     const gchar* interface_name,
-                    const gchar* method_name,
-                    GVariant* parameters,
+                    const gchar* method_name, GVariant* parameters,
                     GDBusMethodInvocation* invocation,
                     gpointer user_data)
 {
@@ -561,8 +543,7 @@ handle_method_call (GDBusConnection* connection,
     LOG(wf::log::LOG_LEVEL_DEBUG, "handle_method_call bus called ", method_name);
 #endif
 
-    if (g_strcmp0(method_name, "change_view_above") == 0)
-    {
+    if (g_strcmp0(method_name, "change_view_above") == 0) {
         uint view_id;
         uint action;
 
@@ -571,8 +552,7 @@ handle_method_call (GDBusConnection* connection,
         idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
                 delete idle_call;
 
                 return;
@@ -584,8 +564,7 @@ handle_method_call (GDBusConnection* connection,
             is_above = view->has_data("wm-actions-above");
             output = view->get_output();
 
-            if ((action == 0) && is_above)
-            {
+            if ((action == 0) && is_above) {
                 signal_data.view = view;
                 output->emit_signal("wm-actions-toggle-above", &signal_data);
             }
@@ -611,6 +590,26 @@ handle_method_call (GDBusConnection* connection,
     }
 
     /*************** View Actions ****************/
+    else
+    if (g_strcmp0(method_name, "ensure_view_visible") == 0)
+    {
+        uint view_id;
+        g_variant_get(parameters, "(u)", &view_id);
+        wf::wl_idle_call* idle_call = new wf::wl_idle_call;
+        idle_call->run_once([=] ()
+        {
+            wayfire_view view = get_view_from_view_id(view_id);
+
+            if (check_view_toplevel(view)) {
+                view->get_output()->ensure_visible(view);
+            }
+
+            delete idle_call;
+        });
+        g_dbus_method_invocation_return_value(invocation, NULL);
+
+        return;
+    }
     else
     if (g_strcmp0(method_name, "update_view_minimize_hint") == 0)
     {
@@ -640,40 +639,36 @@ handle_method_call (GDBusConnection* connection,
         double intensity;
 
         g_variant_get(parameters, "(ud)", &view_id, &intensity);
+
         wf::wl_idle_call* idle_call = new wf::wl_idle_call;
         idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
                 delete idle_call;
 
                 return;
             }
 
-            if (intensity == 1.0)
-            {
-                if (view->get_transformer("dbus-shade"))
-                {
+            if (intensity == 1.0) {
+                if (view->get_transformer("dbus-shade")) {
                     view->pop_transformer("dbus-shade");
                 }
             }
             else
             {
                 wf::view_2D* transformer;
-                if (!view->get_transformer("dbus-shade"))
-                {
-                    view->add_transformer(std::make_unique<wf::view_2D> (
-                        view), "dbus-shade");
+                if (!view->get_transformer("dbus-shade")) {
+                    view->add_transformer(std::make_unique<wf::view_2D> (view),
+                                          "dbus-shade");
                 }
 
                 transformer = dynamic_cast<wf::view_2D*> (
                     view->get_transformer("dbus-shade").get());
 
-                if (transformer->alpha != (float)intensity)
-                {
+                if (transformer->alpha != (float)intensity) {
                     transformer->alpha = (float)intensity;
-                    view->damage();
+                    // view->damage();
                 }
             }
 
@@ -825,15 +820,13 @@ handle_method_call (GDBusConnection* connection,
         idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
                 delete idle_call;
 
                 return;
             }
 
-            if (action == 0)
-            {
+            if (action == 0) {
                 view->set_activated(false);
             }
 
@@ -934,8 +927,7 @@ handle_method_call (GDBusConnection* connection,
             delete idle_call;
         });
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              nullptr);
+        g_dbus_method_invocation_return_value(invocation, nullptr);
 
         return;
     }
@@ -952,16 +944,14 @@ handle_method_call (GDBusConnection* connection,
         idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
                 delete idle_call;
 
                 return;
             }
 
             wf::output_t* output = get_output_from_output_id(output_id);
-            if (output)
-            {
+            if (output) {
                 core.move_view_to_output(view, output, TRUE);
             }
 
@@ -978,15 +968,14 @@ handle_method_call (GDBusConnection* connection,
         int new_workspace_x;
         int new_workspace_y;
 
-        g_variant_get(parameters, "(uii)", &view_id,
-                      &new_workspace_x, &new_workspace_y);
+        g_variant_get(parameters, "(uii)", &view_id, &new_workspace_x,
+                      &new_workspace_y);
 
         wf::wl_idle_call* idle_call = new wf::wl_idle_call;
         idle_call->run_once([=] ()
         {
             wayfire_view view = get_view_from_view_id(view_id);
-            if (!check_view_toplevel(view))
-            {
+            if (!check_view_toplevel(view)) {
                 delete idle_call;
 
                 return;
@@ -1009,16 +998,15 @@ handle_method_call (GDBusConnection* connection,
         int new_workspace_x;
         int new_workspace_y;
 
-        g_variant_get(parameters, "(uii)", &output_id,
-                      &new_workspace_x, &new_workspace_y);
+        g_variant_get(parameters, "(uii)", &output_id, &new_workspace_x,
+                      &new_workspace_y);
 
         wf::wl_idle_call* idle_call = new wf::wl_idle_call;
         idle_call->run_once([=] ()
         {
             wf::output_t* output = get_output_from_output_id(output_id);
 
-            if (output)
-            {
+            if (output) {
                 wf::point_t new_workspace_coord;
                 new_workspace_coord = {new_workspace_x, new_workspace_y};
                 output->workspace->request_workspace(new_workspace_coord);
@@ -1047,8 +1035,7 @@ handle_method_call (GDBusConnection* connection,
 
             for (wf::output_t* output : wf_outputs)
             {
-                if (output)
-                {
+                if (output) {
                     output->workspace->request_workspace(new_workspace_coord);
                 }
             }
@@ -1078,28 +1065,28 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(bs)", &all_workspaces, &app_id);
 
         wf::wl_idle_call* idle_call = new wf::wl_idle_call;
-        idle_call->run_once([all_workspaces, app_id = std::string(app_id), idle_call] ()
+        idle_call->run_once(
+            [all_workspaces, app_id = std::string(app_id), idle_call] ()
         {
             wf::output_t* output = core.get_active_output();
             auto filter = dbus_scale_filter::get(output);
             filter->set_filter(std::move(app_id));
 
-            if (output->is_plugin_active("scale"))
-            {
+            if (output->is_plugin_active("scale")) {
                 output->emit_signal("scale-update", nullptr);
             }
             else
             {
                 wf::activator_data_t adata;
                 adata.source = wf::activator_source_t::PLUGIN;
-                output->call_plugin(all_workspaces ? "scale/toggle_all" : "scale/toggle", adata);
+                output->call_plugin(
+                    all_workspaces ? "scale/toggle_all" : "scale/toggle", adata);
             }
 
             delete idle_call;
         });
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              nullptr);
+        g_dbus_method_invocation_return_value(invocation, nullptr);
     }
 
     /*************** Non-reffing actions at end ****************/
@@ -1115,12 +1102,10 @@ handle_method_call (GDBusConnection* connection,
          * and restore it if different from
          * "default"
          */
-        if (enable)
-        {
+        if (enable) {
             for (wf::output_t* output : wf_outputs)
             {
-                if (!output->activate_plugin(grab_interfaces[output]))
-                {
+                if (!output->activate_plugin(grab_interfaces[output])) {
                     continue;
                 }
 
@@ -1150,8 +1135,7 @@ handle_method_call (GDBusConnection* connection,
             });
         }
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              nullptr);
+        g_dbus_method_invocation_return_value(invocation, nullptr);
 
         return;
     }
@@ -1166,11 +1150,8 @@ handle_method_call (GDBusConnection* connection,
         GVariant* value;
 
         cursor_position = core.get_active_output()->get_cursor_position();
-        value = g_variant_new("(dd)",
-                              cursor_position.x,
-                              cursor_position.y);
-        g_dbus_method_invocation_return_value(invocation,
-                                              value);
+        value = g_variant_new("(dd)", cursor_position.x, cursor_position.y);
+        g_dbus_method_invocation_return_value(invocation, value);
 
         return;
     }
@@ -1188,8 +1169,7 @@ handle_method_call (GDBusConnection* connection,
         }
 
         value = g_variant_new("(au)", &builder);
-        g_dbus_method_invocation_return_value(invocation,
-                                              value);
+        g_dbus_method_invocation_return_value(invocation, value);
 
         return;
     }
@@ -1218,8 +1198,7 @@ handle_method_call (GDBusConnection* connection,
         }
 
         value = g_variant_new("(au)", &builder);
-        g_dbus_method_invocation_return_value(invocation,
-                                              value);
+        g_dbus_method_invocation_return_value(invocation, value);
 
         return;
     }
@@ -1235,8 +1214,7 @@ handle_method_call (GDBusConnection* connection,
         for (auto it = begin(view_vector); it != end(view_vector); ++it)
         {
             if ((it->get()->role != wf::VIEW_ROLE_TOPLEVEL) ||
-                !it->get()->is_mapped())
-            {
+                !it->get()->is_mapped()) {
                 continue;
             }
             else
@@ -1246,8 +1224,7 @@ handle_method_call (GDBusConnection* connection,
         }
 
         value = g_variant_new("(au)", &builder);
-        g_dbus_method_invocation_return_value(invocation,
-                                              value);
+        g_dbus_method_invocation_return_value(invocation, value);
 
         return;
     }
@@ -1260,15 +1237,13 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &output_id);
         wf::output_t* wf_output = get_output_from_output_id(output_id);
 
-        if (wf_output != nullptr)
-        {
+        if (wf_output != nullptr) {
             response = g_strdup_printf(wf_output->to_string().c_str());
         }
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
-        if (wf_output != nullptr)
-        {
+        if (wf_output != nullptr) {
             g_free(response);
         }
 
@@ -1284,21 +1259,17 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &output_id);
         output = get_output_from_output_id(output_id);
-        if (output)
-        {
+        if (output) {
             wlr_output = output->handle;
 
-            if (wlr_output != nullptr)
-            {
+            if (wlr_output != nullptr) {
                 response = g_strdup_printf(wlr_output->make);
             }
         }
 
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(s)",
-                                                            response));
-        if (wlr_output != nullptr)
-        {
+                                              g_variant_new("(s)", response));
+        if (wlr_output != nullptr) {
             g_free(response);
         }
 
@@ -1314,21 +1285,17 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &output_id);
         output = get_output_from_output_id(output_id);
-        if (output)
-        {
+        if (output) {
             wlr_output = output->handle;
 
-            if (wlr_output != nullptr)
-            {
+            if (wlr_output != nullptr) {
                 response = g_strdup_printf(wlr_output->model);
             }
         }
 
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(s)",
-                                                            response));
-        if (wlr_output != nullptr)
-        {
+                                              g_variant_new("(s)", response));
+        if (wlr_output != nullptr) {
             g_free(response);
         }
 
@@ -1346,15 +1313,13 @@ handle_method_call (GDBusConnection* connection,
         wf_output = get_output_from_output_id(output_id);
         wlr_output = wf_output->handle;
 
-        if (wlr_output != nullptr)
-        {
+        if (wlr_output != nullptr) {
             response = g_strdup_printf(wlr_output->serial);
         }
 
         g_dbus_method_invocation_return_value(invocation,
                                               g_variant_new("(s)", response));
-        if (wlr_output != nullptr)
-        {
+        if (wlr_output != nullptr) {
             g_free(response);
         }
 
@@ -1371,17 +1336,15 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_get(parameters, "(u)", &output_id);
         wf_output = get_output_from_output_id(output_id);
-        if (wf_output)
-        {
+        if (wf_output) {
             ws = wf_output->workspace->get_current_workspace();
             horizontal_workspace = ws.x;
             vertical_workspace = ws.y;
         }
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(uu)",
-                                                            horizontal_workspace,
-                                                            vertical_workspace));
+        g_dbus_method_invocation_return_value(
+            invocation,
+            g_variant_new("(uu)", horizontal_workspace, vertical_workspace));
 
         return;
     }
@@ -1391,10 +1354,8 @@ handle_method_call (GDBusConnection* connection,
         wf::dimensions_t workspaces;
         workspaces = core.get_active_output()->workspace->get_workspace_grid_size();
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(ii)",
-                                                            workspaces.width,
-                                                            workspaces.height));
+        g_dbus_method_invocation_return_value(
+            invocation, g_variant_new("(ii)", workspaces.width, workspaces.height));
 
         return;
     }
@@ -1410,8 +1371,19 @@ handle_method_call (GDBusConnection* connection,
         int view_above = -1;
         std::vector<wayfire_view> workspace_views;
 
-        if (!check_view_toplevel(view))
+        if (!check_view_toplevel(view)) {
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(i)", view_above));
+
+            return;
+        }
+
+        while (view->parent)
         {
+            view = view->parent;
+        }
+
+        if (!check_view_toplevel(view)) {
             g_dbus_method_invocation_return_value(
                 invocation, g_variant_new("(i)", view_above));
 
@@ -1419,51 +1391,36 @@ handle_method_call (GDBusConnection* connection,
         }
 
         output = view->get_output();
-        if (!output)
-        {
-            g_dbus_method_invocation_return_value(
-                invocation, g_variant_new("(i)", view_above));
+        if (!output) {
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(i)", view_above));
 
             return;
         }
 
-        workspace_views = view->get_output()->workspace->get_views_in_layer(
-            wf::MIDDLE_LAYERS);
+        workspace_views =
+            output->workspace->get_views_in_layer(wf::MIDDLE_LAYERS);
 
         for (int i = 0; i < workspace_views.size() - 1; i++)
         {
             wayfire_view v = workspace_views[i];
-            if (!check_view_toplevel(v))
-            {
+            if (!check_view_toplevel(v)) {
                 continue;
             }
 
-            if (v == view)
-            {
-                if (i != 0)
-                {
-                    if (check_view_toplevel(workspace_views[i - 1]))
-                    {
+            if (v == view) {
+                if (i != 0) {
+                    if (check_view_toplevel(workspace_views[i - 1])) {
                         view_above = workspace_views[i - 1]->get_id();
                     }
 
                     break;
                 }
             }
-
-            // if (view_above != -1)
-            // {
-            // g_debug("Above %s is %s", view->get_title().c_str(),
-            // get_view_from_view_id(view_above)->get_title().c_str());
-            // }
-            // else
-            // {
-            // g_debug("No view above %s", view->get_title().c_str());
-            // }
         }
 
-        g_dbus_method_invocation_return_value(
-            invocation, g_variant_new("(i)", view_above));
+        g_dbus_method_invocation_return_value(invocation,
+                                              g_variant_new("(i)", view_above));
 
         return;
     }
@@ -1478,8 +1435,19 @@ handle_method_call (GDBusConnection* connection,
         int view_below = -1;
         std::vector<wayfire_view> workspace_views;
 
-        if (!check_view_toplevel(view))
+        if (!check_view_toplevel(view)) {
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(i)", view_below));
+
+            return;
+        }
+
+        while (view->parent)
         {
+            view = view->parent;
+        }
+
+        if (!check_view_toplevel(view)) {
             g_dbus_method_invocation_return_value(
                 invocation, g_variant_new("(i)", view_below));
 
@@ -1487,31 +1455,26 @@ handle_method_call (GDBusConnection* connection,
         }
 
         output = view->get_output();
-        if (!output)
-        {
-            g_dbus_method_invocation_return_value(
-                invocation, g_variant_new("(i)", view_below));
+        if (!output) {
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(i)", view_below));
 
             return;
         }
 
-        workspace_views = view->get_output()->workspace->get_views_in_layer(
-            wf::MIDDLE_LAYERS);
+        workspace_views =
+            output->workspace->get_views_in_layer(wf::MIDDLE_LAYERS);
 
         for (int i = 0; i < workspace_views.size() - 1; i++)
         {
             wayfire_view v = workspace_views[i];
-            if (!check_view_toplevel(v))
-            {
+            if (!check_view_toplevel(v)) {
                 continue;
             }
 
-            if (v == view)
-            {
-                if (i != workspace_views.size() - 1)
-                {
-                    if (check_view_toplevel(workspace_views[i + 1]))
-                    {
+            if (v == view) {
+                if (i != workspace_views.size() - 1) {
+                    if (check_view_toplevel(workspace_views[i + 1])) {
                         view_below = workspace_views[i + 1]->get_id();
                     }
 
@@ -1530,8 +1493,8 @@ handle_method_call (GDBusConnection* connection,
             // }
         }
 
-        g_dbus_method_invocation_return_value(
-            invocation, g_variant_new("(i)", view_below));
+        g_dbus_method_invocation_return_value(invocation,
+                                              g_variant_new("(i)", view_below));
 
         return;
     }
@@ -1554,8 +1517,7 @@ handle_method_call (GDBusConnection* connection,
 
         response = g_strdup(view->get_app_id().c_str());
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(s)",
-                                                            response));
+                                              g_variant_new("(s)", response));
         g_free(response);
 
         return;
@@ -1585,7 +1547,8 @@ handle_method_call (GDBusConnection* connection,
         return;
     }
     else
-    if (g_strcmp0(method_name, "query_view_app_id_xwayland_net_wm_name") == 0)
+    if (g_strcmp0(method_name, "query_view_app_id_xwayland_net_wm_name") ==
+        0)
     {
         uint view_id;
         gchar* response = "nullptr";
@@ -1595,23 +1558,19 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
+        if (view) {
             auto wlr_surf = view->get_wlr_surface();
-            if (!wlr_surf)
-            {
+            if (!wlr_surf) {
                 g_dbus_method_invocation_return_value(invocation,
                                                       g_variant_new("(s)", response));
 
                 return;
             }
 
-            if (wlr_surface_is_xwayland_surface(wlr_surf))
-            {
+            if (wlr_surface_is_xwayland_surface(wlr_surf)) {
                 struct wlr_xwayland_surface* xsurf;
                 xsurf = wlr_xwayland_surface_from_wlr_surface(wlr_surf);
-                if (!xsurf)
-                {
+                if (!xsurf) {
                     g_dbus_method_invocation_return_value(invocation,
                                                           g_variant_new("(s)", response));
 
@@ -1625,8 +1584,7 @@ handle_method_call (GDBusConnection* connection,
             }
         }
 
-        if (free_response)
-        {
+        if (free_response) {
             g_free(response);
         }
 
@@ -1654,8 +1612,7 @@ handle_method_call (GDBusConnection* connection,
 
         response = g_strdup_printf(view->get_title().c_str());
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(s)",
-                                                            response));
+                                              g_variant_new("(s)", response));
         g_free(response);
 
         return;
@@ -1673,14 +1630,12 @@ handle_method_call (GDBusConnection* connection,
             return;
         }
 
-        if (view->has_data("view-demands-attention"))
-        {
+        if (view->has_data("view-demands-attention")) {
             attention = true;
         }
 
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(b)",
-                                                            attention));
+                                              g_variant_new("(b)", attention));
 
         return;
     }
@@ -1690,8 +1645,7 @@ handle_method_call (GDBusConnection* connection,
         const char* xdisplay = core.get_xwayland_display().c_str();
 
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(s)",
-                                                            xdisplay));
+                                              g_variant_new("(s)", xdisplay));
 
         return;
     }
@@ -1704,45 +1658,36 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (!view)
-        {
+        if (!view) {
             g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(u)",
-                                                                0));
+                                                  g_variant_new("(u)", 0));
 
             return;
         }
 
-        if (xwayland_enabled == 1)
-        {
+        if (xwayland_enabled == 1) {
             auto main_wlr_surface = view->get_main_surface()->get_wlr_surface();
-            if (!main_wlr_surface)
-            {
+            if (!main_wlr_surface) {
                 g_dbus_method_invocation_return_value(invocation,
-                                                      g_variant_new("(u)",
-                                                                    0));
+                                                      g_variant_new("(u)", 0));
 
                 return;
             }
 
-            if (wlr_surface_is_xwayland_surface(main_wlr_surface))
-            {
+            if (wlr_surface_is_xwayland_surface(main_wlr_surface)) {
 #ifdef DBUS_PLUGIN_DEBUG
-                LOG(wf::log::LOG_LEVEL_DEBUG,
-                    "xwayland is the surface type.");
+                LOG(wf::log::LOG_LEVEL_DEBUG, "xwayland is the surface type.");
 #endif
                 struct wlr_xwayland_surface* main_xsurf;
                 main_xsurf = wlr_xwayland_surface_from_wlr_surface(main_wlr_surface);
-                g_dbus_method_invocation_return_value(invocation,
-                                                      g_variant_new("(u)",
-                                                                    main_xsurf->window_id));
+                g_dbus_method_invocation_return_value(
+                    invocation, g_variant_new("(u)", main_xsurf->window_id));
 
                 return;
             }
         }
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(u)", 0));
+        g_dbus_method_invocation_return_value(invocation, g_variant_new("(u)", 0));
 
         return;
     }
@@ -1757,31 +1702,25 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(us)", &view_id, &atom_name);
         view = get_view_from_view_id(view_id);
 
-        if (!view)
-        {
+        if (!view) {
             g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(u)",
-                                                                0));
+                                                  g_variant_new("(u)", 0));
 
             return;
         }
 
         auto main_wlr_surface = view->get_main_surface()->get_wlr_surface();
-        if (!main_wlr_surface)
-        {
+        if (!main_wlr_surface) {
             g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(u)",
-                                                                0));
+                                                  g_variant_new("(u)", 0));
 
             return;
         }
 
         if ((xwayland_enabled != 1) ||
-            !wlr_surface_is_xwayland_surface(main_wlr_surface))
-        {
+            !wlr_surface_is_xwayland_surface(main_wlr_surface)) {
             g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(u)",
-                                                                0));
+                                                  g_variant_new("(u)", 0));
 
             return;
         }
@@ -1797,57 +1736,45 @@ handle_method_call (GDBusConnection* connection,
         xcb_intern_atom_reply_t* reply;
         atom_cookie = xcb_intern_atom(conn, 0, strlen(atom_name), atom_name);
         reply = xcb_intern_atom_reply(conn, atom_cookie, NULL);
-        if (reply != NULL)
-        {
+        if (reply != NULL) {
             atom = reply->atom;
             free(reply);
         }
         else
         {
 #ifdef DBUS_PLUGIN_DEBUG
-            LOG(wf::log::LOG_LEVEL_DEBUG,
-                "reply for querying the atom is empty.");
+            LOG(wf::log::LOG_LEVEL_DEBUG, "reply for querying the atom is empty.");
 #endif
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(u)",
-                                                                atom_value_cardinal));
+            g_dbus_method_invocation_return_value(
+                invocation, g_variant_new("(u)", atom_value_cardinal));
 
             return;
         }
 
         xcb_get_property_cookie_t reply_cookie;
         xcb_get_property_reply_t* reply_value;
-        reply_cookie = xcb_get_property(conn,
-                                        0,
-                                        main_xsurf->window_id,
-                                        atom,
-                                        XCB_ATOM_ANY,
-                                        0,
-                                        2048);
+        reply_cookie = xcb_get_property(conn, 0, main_xsurf->window_id, atom,
+                                        XCB_ATOM_ANY, 0, 2048);
         reply_value = xcb_get_property_reply(conn, reply_cookie, NULL);
         xcb_disconnect(conn);
 
-        if (reply_value->type == XCB_ATOM_CARDINAL)
-        {
+        if (reply_value->type == XCB_ATOM_CARDINAL) {
             uint* uvalue = (uint*)xcb_get_property_value(reply_value);
             atom_value_cardinal = *uvalue;
 #ifdef DBUS_PLUGIN_DEBUG
-            LOG(wf::log::LOG_LEVEL_DEBUG,
-                "value to uint.", atom_value_cardinal);
+            LOG(wf::log::LOG_LEVEL_DEBUG, "value to uint.", atom_value_cardinal);
 #endif
         }
 
 #ifdef DBUS_PLUGIN_DEBUG
         else
         {
-            LOG(wf::log::LOG_LEVEL_DEBUG,
-                "requested value is not a cardinal");
+            LOG(wf::log::LOG_LEVEL_DEBUG, "requested value is not a cardinal");
         }
 #endif
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(u)",
-                                                            atom_value_cardinal));
+        g_dbus_method_invocation_return_value(
+            invocation, g_variant_new("(u)", atom_value_cardinal));
 
         return;
     }
@@ -1862,32 +1789,26 @@ handle_method_call (GDBusConnection* connection,
 
         wayfire_view view = get_view_from_view_id(view_id);
 
-        if (!view)
-        {
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(s)",
-                                                                "View not found."));
+        if (!view) {
+            g_dbus_method_invocation_return_value(
+                invocation, g_variant_new("(s)", "View not found."));
 
             return;
         }
 
         auto main_wlr_surface = view->get_main_surface()->get_wlr_surface();
 
-        if (!main_wlr_surface)
-        {
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(s)",
-                                                                "main_wlr_surface not found."));
+        if (!main_wlr_surface) {
+            g_dbus_method_invocation_return_value(
+                invocation, g_variant_new("(s)", "main_wlr_surface not found."));
 
             return;
         }
 
         if ((xwayland_enabled != 1) ||
-            !wlr_surface_is_xwayland_surface(main_wlr_surface))
-        {
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(s)",
-                                                                "Not an xwayland surface."));
+            !wlr_surface_is_xwayland_surface(main_wlr_surface)) {
+            g_dbus_method_invocation_return_value(
+                invocation, g_variant_new("(s)", "Not an xwayland surface."));
 
             return;
         }
@@ -1904,53 +1825,43 @@ handle_method_call (GDBusConnection* connection,
         xcb_intern_atom_reply_t* reply;
         atom_cookie = xcb_intern_atom(conn, 0, strlen(atom_name), atom_name);
         reply = xcb_intern_atom_reply(conn, atom_cookie, NULL);
-        if (reply != NULL)
-        {
+        if (reply != NULL) {
             atom = reply->atom;
             free(reply);
         }
         else
         {
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(s)",
-                                                                "reply for querying the atom is empty."));
+            g_dbus_method_invocation_return_value(
+                invocation,
+                g_variant_new("(s)", "reply for querying the atom is empty."));
 
             return;
         }
 
-        xcb_get_property_cookie_t reply_cookie = xcb_get_property(conn,
-                                                                  0,
-                                                                  main_xsurf->window_id,
-                                                                  atom,
-                                                                  XCB_ATOM_ANY,
-                                                                  0,
-                                                                  2048);
-        xcb_get_property_reply_t* reply_value = xcb_get_property_reply(conn,
-                                                                       reply_cookie,
-                                                                       NULL);
+        xcb_get_property_cookie_t reply_cookie = xcb_get_property(
+            conn, 0, main_xsurf->window_id, atom, XCB_ATOM_ANY, 0, 2048);
+        xcb_get_property_reply_t* reply_value =
+            xcb_get_property_reply(conn, reply_cookie, NULL);
 
         char* value = static_cast<char*> (xcb_get_property_value(reply_value));
 
         xcb_disconnect(conn);
 
-        if (reply_value->type != XCB_ATOM_CARDINAL)
-        {
+        if (reply_value->type != XCB_ATOM_CARDINAL) {
             atom_value_string = value;
 #ifdef DBUS_PLUGIN_DEBUG
-            LOG(wf::log::LOG_LEVEL_DEBUG,
-                "value to char.", atom_value_string);
+            LOG(wf::log::LOG_LEVEL_DEBUG, "value to char.", atom_value_string);
 #endif
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(s)",
-                                                                atom_value_string));
+            g_dbus_method_invocation_return_value(
+                invocation, g_variant_new("(s)", atom_value_string));
 
             return;
         }
         else
         {
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(s)",
-                                                                "XCB_ATOM_CARDINAL type requested."));
+            g_dbus_method_invocation_return_value(
+                invocation,
+                g_variant_new("(s)", "XCB_ATOM_CARDINAL type requested."));
 
             return;
         }
@@ -1967,33 +1878,23 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (!view)
-        {
+        if (!view) {
             g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(iuu)",
-                                                                0,
-                                                                0,
-                                                                0));
+                                                  g_variant_new("(iuu)", 0, 0, 0));
 
             return;
         }
 
-        if (xwayland_enabled == 1)
-        {
+        if (xwayland_enabled == 1) {
             auto main_surface = view->get_main_surface()->get_wlr_surface();
-            if (!main_surface)
-            {
+            if (!main_surface) {
                 g_dbus_method_invocation_return_value(invocation,
-                                                      g_variant_new("(iuu)",
-                                                                    0,
-                                                                    0,
-                                                                    0));
+                                                      g_variant_new("(iuu)", 0, 0, 0));
 
                 return;
             }
 
-            if (wlr_surface_is_xwayland_surface(main_surface))
-            {
+            if (wlr_surface_is_xwayland_surface(main_surface)) {
                 struct wlr_xwayland_surface* main_xsurf;
                 xcb_res_client_id_spec_t spec = {0};
                 xcb_generic_error_t* err = NULL;
@@ -2001,8 +1902,7 @@ handle_method_call (GDBusConnection* connection,
                 xcb_res_query_client_ids_reply_t* reply;
                 int screen;
 
-                const char* xdisplay =
-                    core.get_xwayland_display().c_str();
+                const char* xdisplay = core.get_xwayland_display().c_str();
                 xcb_connection_t* conn = xcb_connect(xdisplay, &screen);
 
                 main_xsurf = wlr_xwayland_surface_from_wlr_surface(main_surface);
@@ -2011,8 +1911,7 @@ handle_method_call (GDBusConnection* connection,
                 cookie = xcb_res_query_client_ids(conn, 1, &spec);
                 reply = xcb_res_query_client_ids_reply(conn, cookie, &err);
 
-                if (reply == NULL)
-                {
+                if (reply == NULL) {
 #ifdef DBUS_PLUGIN_DEBUG
                     LOG(wf::log::LOG_LEVEL_DEBUG,
                         "could not get pid from xserver, empty reply");
@@ -2025,8 +1924,7 @@ handle_method_call (GDBusConnection* connection,
                     for (; it.rem; xcb_res_client_id_value_next(&it))
                     {
                         spec = it.data->spec;
-                        if (spec.mask & XCB_RES_CLIENT_ID_MASK_LOCAL_CLIENT_PID)
-                        {
+                        if (spec.mask & XCB_RES_CLIENT_ID_MASK_LOCAL_CLIENT_PID) {
                             pid = *xcb_res_client_id_value_value(it.data);
                             break;
                         }
@@ -2037,15 +1935,11 @@ handle_method_call (GDBusConnection* connection,
 
                 xcb_disconnect(conn);
 
-                if (pid != 0)
-                {
+                if (pid != 0) {
                     LOG(wf::log::LOG_LEVEL_DEBUG,
                         "returning xwayland window credentials.");
-                    g_dbus_method_invocation_return_value(invocation,
-                                                          g_variant_new("(iuu)",
-                                                                        pid,
-                                                                        uid,
-                                                                        gid));
+                    g_dbus_method_invocation_return_value(
+                        invocation, g_variant_new("(iuu)", pid, uid, gid));
 
                     return;
                 }
@@ -2055,15 +1949,9 @@ handle_method_call (GDBusConnection* connection,
 #ifdef DBUS_PLUGIN_DEBUG
         LOG(wf::log::LOG_LEVEL_DEBUG, "returning standard credentials.");
 #endif
-        wl_client_get_credentials(view->get_client(),
-                                  &pid,
-                                  &uid,
-                                  &gid);
-        g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(iuu)",
-                                                            pid,
-                                                            uid,
-                                                            gid));
+        wl_client_get_credentials(view->get_client(), &pid, &uid, &gid);
+        g_dbus_method_invocation_return_value(
+            invocation, g_variant_new("(iuu)", pid, uid, gid));
 
         return;
     }
@@ -2078,10 +1966,8 @@ handle_method_call (GDBusConnection* connection,
         view = get_view_from_view_id(view_id);
         above = false;
 
-        if (view)
-        {
-            if (view->has_data("wm-actions-above"))
-            {
+        if (view) {
+            if (view->has_data("wm-actions-above")) {
                 above = true;
             }
         }
@@ -2093,8 +1979,7 @@ handle_method_call (GDBusConnection* connection,
         }
 #endif
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(b)",
-                                                            above));
+                                              g_variant_new("(b)", above));
 
         return;
     }
@@ -2108,8 +1993,7 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
+        if (view) {
             response = (view->tiled_edges == wf::TILED_EDGES_ALL);
         }
 
@@ -2120,8 +2004,7 @@ handle_method_call (GDBusConnection* connection,
         }
 #endif
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(b)",
-                                                            response));
+                                              g_variant_new("(b)", response));
 
         return;
     }
@@ -2136,8 +2019,7 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
+        if (view) {
             response = view->activated;
         }
 
@@ -2148,8 +2030,7 @@ handle_method_call (GDBusConnection* connection,
         }
 #endif
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(b)",
-                                                            response));
+                                              g_variant_new("(b)", response));
 
         return;
     }
@@ -2164,8 +2045,7 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
+        if (view) {
             response = view->minimized;
         }
 
@@ -2176,8 +2056,7 @@ handle_method_call (GDBusConnection* connection,
         }
 #endif
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(b)",
-                                                            response));
+                                              g_variant_new("(b)", response));
 
         return;
     }
@@ -2192,8 +2071,7 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
+        if (view) {
             response = view->fullscreen;
         }
 
@@ -2204,8 +2082,7 @@ handle_method_call (GDBusConnection* connection,
         }
 #endif
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(b)",
-                                                            response));
+                                              g_variant_new("(b)", response));
 
         return;
     }
@@ -2219,10 +2096,8 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
-            if (view->get_output())
-            {
+        if (view) {
+            if (view->get_output()) {
                 output_id = view->get_output()->get_id();
             }
 
@@ -2236,8 +2111,7 @@ handle_method_call (GDBusConnection* connection,
         }
 
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(u)",
-                                                            output_id));
+                                              g_variant_new("(u)", output_id));
 
         return;
     }
@@ -2261,8 +2135,7 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         wayfire_view view = get_view_from_view_id(view_id);
 
-        if (!check_view_toplevel(view))
-        {
+        if (!check_view_toplevel(view)) {
 #ifdef DBUS_PLUGIN_DEBUG
 
             LOG(wf::log::LOG_LEVEL_DEBUG, "query_view_workspaces no view");
@@ -2279,17 +2152,14 @@ handle_method_call (GDBusConnection* connection,
 
         g_variant_builder_init(&builder, G_VARIANT_TYPE("a(ii)"));
 
-        for (int horizontal_workspace = 0;
-             horizontal_workspace < workspaces.width;
+        for (int horizontal_workspace = 0; horizontal_workspace < workspaces.width;
              horizontal_workspace++)
         {
-            for (int vertical_workspace = 0;
-                 vertical_workspace < workspaces.height;
+            for (int vertical_workspace = 0; vertical_workspace < workspaces.height;
                  vertical_workspace++)
             {
                 wf::point_t ws = {horizontal_workspace, vertical_workspace};
-                if (output->workspace->view_visible_on(view, ws))
-                {
+                if (output->workspace->view_visible_on(view, ws)) {
                     workspace_relative_geometry = output->render->get_ws_box(ws);
                     intersection = wf::geometry_intersection(view_relative_geometry,
                                                              workspace_relative_geometry);
@@ -2297,10 +2167,8 @@ handle_method_call (GDBusConnection* connection,
                     area /= 1.0 * view_relative_geometry.width *
                         view_relative_geometry.height;
 
-                    if (area > 0.1)
-                    {
-                        g_variant_builder_add(&builder, "(ii)",
-                                              horizontal_workspace,
+                    if (area > 0.1) {
+                        g_variant_builder_add(&builder, "(ii)", horizontal_workspace,
                                               vertical_workspace);
                     }
                 }
@@ -2323,8 +2191,7 @@ handle_method_call (GDBusConnection* connection,
         group_leader_view_id = view_id;
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
+        if (view) {
             while (view->parent)
             {
                 view = view->parent;
@@ -2336,9 +2203,8 @@ handle_method_call (GDBusConnection* connection,
 #endif
         }
 
-        g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(u)",
-                                                            group_leader_view_id));
+        g_dbus_method_invocation_return_value(
+            invocation, g_variant_new("(u)", group_leader_view_id));
 
         return;
     }
@@ -2353,15 +2219,11 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        if (view)
-        {
-            if (view->is_mapped())
-            {
+        if (view) {
+            if (view->is_mapped()) {
                 is_modal_dialog = view->has_data("gtk-shell-modal");
 
-                if ((view->role == wf::VIEW_ROLE_TOPLEVEL) &&
-                    !is_modal_dialog)
-                {
+                if ((view->role == wf::VIEW_ROLE_TOPLEVEL) && !is_modal_dialog) {
                     response = 1;
                 }
 
@@ -2380,8 +2242,7 @@ handle_method_call (GDBusConnection* connection,
         }
 
         g_dbus_method_invocation_return_value(invocation,
-                                              g_variant_new("(u)",
-                                                            response));
+                                              g_variant_new("(u)", response));
 
         return;
     }
@@ -2394,25 +2255,27 @@ handle_method_call (GDBusConnection* connection,
         g_variant_get(parameters, "(u)", &view_id);
         view = get_view_from_view_id(view_id);
 
-        auto wlr_surf = view->get_wlr_surface();
-        if (!wlr_surf)
+        if (!check_view_toplevel(view))
         {
             g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(uu)",
-                                                                0,
-                                                                0));
+                                                  g_variant_new("(uu)", 0, 0));
 
             return;
         }
 
-        if (wlr_surface_is_xwayland_surface(wlr_surf))
-        {
+        auto wlr_surf = view->get_wlr_surface();
+        if (!wlr_surf) {
+            g_dbus_method_invocation_return_value(invocation,
+                                                  g_variant_new("(uu)", 0, 0));
+
+            return;
+        }
+
+        if (wlr_surface_is_xwayland_surface(wlr_surf)) {
             struct wlr_xwayland_surface* xsurf;
             xsurf = wlr_xwayland_surface_from_wlr_surface(wlr_surf);
-            g_dbus_method_invocation_return_value(invocation,
-                                                  g_variant_new("(uu)",
-                                                                xsurf->width,
-                                                                xsurf->height));
+            g_dbus_method_invocation_return_value(
+                invocation, g_variant_new("(uu)", xsurf->width, xsurf->height));
         }
 
         return;
@@ -2446,8 +2309,7 @@ handle_get_property (GDBusConnection* connection,
                      const gchar* sender,
                      const gchar* object_path,
                      const gchar* interface_name,
-                     const gchar* property_name,
-                     GError** error,
+                     const gchar* property_name, GError** error,
                      gpointer user_data)
 {
     // returning nullptr would crash compositor
@@ -2475,39 +2337,35 @@ handle_set_property (GDBusConnection* connection,
                      const gchar* sender,
                      const gchar* object_path,
                      const gchar* interface_name,
-                     const gchar* property_name,
-                     GVariant* value,
-                     GError** error,
-                     gpointer user_data)
+                     const gchar* property_name, GVariant* value,
+                     GError** error, gpointer user_data)
 {
     /* unused */
     return false;
 }
 
-static const GDBusInterfaceVTable interface_vtable =
-{
-    handle_method_call,
-    handle_get_property,
-    handle_set_property,
-    {0}
+static const GDBusInterfaceVTable interface_vtable = {
+    handle_method_call, handle_get_property, handle_set_property, {0}
 };
 
 static gboolean
 bus_emit_signal (gchar* signal_name, GVariant* signal_data)
 {
-    GError* local_error = nullptr;
+    GError* local_error = NULL;
+    if (!dbus_connection) {
+        if (signal_data != nullptr) {
+            g_variant_unref(signal_data);
+        }
 
-    g_dbus_connection_emit_signal(dbus_connection,
-                                  nullptr,
-                                  "/org/wayland/compositor",
-                                  "org.wayland.compositor",
-                                  signal_name,
-                                  signal_data,
-                                  &local_error);
+        return true;
+    }
+
+    g_dbus_connection_emit_signal(
+        dbus_connection, nullptr, "/org/wayland/compositor",
+        "org.wayland.compositor", signal_name, signal_data, &local_error);
     g_assert_no_error(local_error);
 
-    if (signal_data != nullptr)
-    {
+    if (signal_data != nullptr) {
         g_variant_unref(signal_data);
     }
 
@@ -2515,41 +2373,32 @@ bus_emit_signal (gchar* signal_name, GVariant* signal_data)
 }
 
 static void
-on_bus_acquired (GDBusConnection* connection,
-                 const gchar* name,
+on_bus_acquired (GDBusConnection* connection, const gchar* name,
                  gpointer user_data)
 {
     uint registration_id;
 
     dbus_connection = connection;
-    registration_id =
-        g_dbus_connection_register_object(connection,
-                                          "/org/wayland/compositor",
-                                          introspection_data->interfaces[0],
-                                          &interface_vtable,
-                                          nullptr,
-                                          nullptr,
-                                          nullptr);
+    registration_id = g_dbus_connection_register_object(
+        connection, "/org/wayland/compositor", introspection_data->interfaces[0],
+        &interface_vtable, nullptr, nullptr, nullptr);
 #ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG, "Acquired the Bus");
 #endif
 }
 
 static void
-on_name_acquired (GDBusConnection* connection,
-                  const gchar* name,
+on_name_acquired (GDBusConnection* connection, const gchar* name,
                   gpointer user_data)
 {
 #ifdef DBUS_PLUGIN_DEBUG
     LOG(wf::log::LOG_LEVEL_DEBUG,
-        "Acquired the name " + std::string(name) +
-        "on the session bus\n");
+        "Acquired the name " + std::string(name) + "on the session bus\n");
 #endif
 }
 
 static void
-on_name_lost (GDBusConnection* connection,
-              const gchar* name,
+on_name_lost (GDBusConnection* connection, const gchar* name,
               gpointer user_data)
 {
 #ifdef DBUS_PLUGIN_DEBUG
@@ -2561,54 +2410,11 @@ on_name_lost (GDBusConnection* connection,
 static void
 acquire_bus ()
 {
-    // Fail if not available - Do *not* try to replace;
-    // E.g if running wayfire and starting a nested wayfire
-    // in the future it could be possible to have a seperate
-    // object path if a nested compostor is running
-    // see TODO's
-
     GBusNameOwnerFlags flags;
-    flags = G_BUS_NAME_OWNER_FLAGS_DO_NOT_QUEUE;
-    introspection_data = g_dbus_node_info_new_for_xml(introspection_xml,
-                                                      nullptr);
+// flags = G_BUS_NAME_OWNER_FLAGS_DO_NOT_QUEUE;
+    introspection_data = g_dbus_node_info_new_for_xml(introspection_xml, nullptr);
 
-    owner_id = g_bus_own_name(G_BUS_TYPE_SESSION,
-                              "org.wayland.compositor",
-                              flags,
-                              on_bus_acquired,
-                              on_name_acquired,
-                              on_name_lost,
-                              nullptr,
-                              nullptr);
-
-    /*
-     * TODO: figure out why it crashes without this line
-     * guess would be lifetime of some object.
-     */
-    g_print("Increase this later: 42");
-}
-
-static gpointer
-dbus_thread_exec_function (gpointer user_data)
-{
-#ifdef DBUS_PLUGIN_DEBUG
-    LOG(wf::log::LOG_LEVEL_DEBUG, "dbus_thread_exec_function start");
-#endif
-
-    GMainContext* dbus_context;
-    dbus_context = static_cast<GMainContext*> (user_data);
-    g_main_context_push_thread_default(dbus_context);
-    dbus_event_loop = g_main_loop_new(dbus_context, FALSE);
-    g_main_loop_run(dbus_event_loop);
-
-    /*
-     * Event loop is killed, probably dbus plugin is
-     * being unloaded
-     */
-#ifdef DBUS_PLUGIN_DEBUG
-    LOG(wf::log::LOG_LEVEL_DEBUG, "If you are here either dbus plugin");
-    LOG(wf::log::LOG_LEVEL_DEBUG, "is being deactivated or this is a bug.");
-#endif
-
-    return nullptr;
+    owner_id = g_bus_own_name(G_BUS_TYPE_SESSION, "org.wayland.compositor", flags,
+                              on_bus_acquired, on_name_acquired, on_name_lost,
+                              nullptr, nullptr);
 }
