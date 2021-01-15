@@ -260,29 +260,31 @@ class dbus_interface_t
     };
 
     // wf::signal_connection_t subsurface_added{[=](wf::signal_data_t *data) {
-    //   LOGE("subsurface_added signal");
+    // LOGE("subsurface_added signal");
     // }};
 
     /***
      * The View has received ping timeout.
      ***/
-    wf::signal_connection_t view_timeout{[=](wf::signal_data_t *data) {
+    wf::signal_connection_t view_timeout{[=] (wf::signal_data_t* data)
+        {
+            GVariant* signal_data;
+            wayfire_view view;
+            view = get_signaled_view(data);
 
-      GVariant *signal_data;
-      wayfire_view view;
-      view = get_signaled_view(data);
+            if (!view) {
+                LOGE("view_timeout no view");
 
-      if (!view) {
-        LOGE("view_timeout no view");
+                return;
+            }
 
-        return;
-      }
-      LOGE("view_timeout ", view->get_id());
+            LOGE("view_timeout ", view->get_id());
 
-      signal_data = g_variant_new("(u)", view->get_id());
-      g_variant_ref(signal_data);
-      bus_emit_signal("view_timeout", signal_data);
-    }};
+            signal_data = g_variant_new("(u)", view->get_id());
+            g_variant_ref(signal_data);
+            bus_emit_signal("view_timeout", signal_data);
+        }
+    };
 
     /***
      * The view has closed.
