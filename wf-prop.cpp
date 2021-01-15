@@ -237,6 +237,23 @@ query_view_role (uint view_id)
     return value;
 }
 
+static uint
+query_view_group_leader (uint view_id)
+{
+    GError* error = NULL;
+    GVariant* tmp = NULL;
+    uint value;
+
+    tmp = g_dbus_proxy_call_sync(proxy->gobj(), "query_view_group_leader",
+                                 g_variant_new("(u)", view_id),
+                                 G_DBUS_CALL_FLAGS_NONE, -1, NULL, &error);
+    g_assert_no_error(error);
+    g_variant_get(tmp, "(u)", &value);
+    g_variant_unref(tmp);
+
+    return value;
+}
+
 static gchar*
 query_view_app_id (uint view_id)
 {
@@ -376,6 +393,8 @@ print_view_data (guint view_id)
     gchar* output_name = query_output_name(output);
     guint xwid = query_view_xwayland_wid(view_id);
     guint role = query_view_role(view_id);
+    guint group_leader = query_view_group_leader(view_id);
+
     std::vector<std::pair<int, int>> workspaces = query_view_workspaces(view_id);
     GError* error = NULL;
     GVariant* tmp = NULL;
@@ -410,6 +429,7 @@ print_view_data (guint view_id)
         g_print("Role:              %s\n", "Unknown");
     }
 
+    g_print("Group Leader:      %i\n", group_leader);
     g_print("Process id:        %i\n", pid);
     g_print("User id:           %u\n", uid);
     g_print("Group id:          %u\n", gid);
@@ -542,9 +562,9 @@ main (int argc, char* argv [])
                 g_variant_iter_init(&iter2, child);
                 while ((cchild = g_variant_iter_next_value(&iter2)))
                 {
-                  g_print("***************************************\n");
-                  print_view_data(g_variant_get_uint32(cchild));
-                  g_print("***************************************\n\n");
+                    g_print("***************************************\n");
+                    print_view_data(g_variant_get_uint32(cchild));
+                    g_print("***************************************\n\n");
                 }
             }
 
