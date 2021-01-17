@@ -149,7 +149,16 @@ class dbus_interface_t
         geometry_signal = g_settings_get_boolean(settings, "geometry-signal");
 
         acquire_bus();
-        core.run("dbus-update-activation-environment --systemd --all");
+        gchar* startup_notify_cmd = NULL;
+        startup_notify_cmd = g_settings_get_string(settings, "startup-notify");
+
+        if (g_strcmp0(startup_notify_cmd, "") != 0)
+        {
+            LOGE("Running startup up notify:", startup_notify_cmd);
+            core.run(startup_notify_cmd);
+        }
+
+        g_free(startup_notify_cmd);
     }
 
     ~dbus_interface_t()
