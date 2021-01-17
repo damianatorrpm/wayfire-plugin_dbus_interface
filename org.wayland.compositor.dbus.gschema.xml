@@ -6,5 +6,10 @@
       <summary>geometry-signal</summary>
       <description>geometry-signal</description>
     </key>
+    <key type="s" name="startup-notify">
+      <default>""</default>
+      <summary>Command that runs on session startup</summary>
+      <description>Command that runs on session startup</description>
+    </key>    
   </schema>
 </schemalist>
