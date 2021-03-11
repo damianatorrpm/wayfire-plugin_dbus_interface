@@ -5,8 +5,11 @@ Authors: Damian Ivanov
 Contributors: https://github.com/damianatorrpm/wayfire-plugin_dbus_interface/graphs/contributors
 
 ### Installation
-Standard:
-meson build && ninja -C build && meson install -C build
+- Install (wayfire-plugins-extra)[https://github.com/WayfireWM/wayfire-plugins-extra]
+- Build & install the plugin and wf-prop: `meson build && ninja -C build && sudo meson install -C build`
+- Enable `glib-main-loop` and `dbus_interface` in your wayfire.ini
+
+If one of the plugins isn't loaded (check wayfire's debug output), make sure the plugin was installed to the correct path.
 
 ### Coding style
 * uncrustify.ini in the repo
