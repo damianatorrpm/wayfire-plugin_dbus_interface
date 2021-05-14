@@ -15,11 +15,11 @@ extern "C" {
 // #include <xwayland/xwm.h>
 #undef static
 #undef class
-#include <gio/gio.h>
 #include <sys/socket.h>
 #include <wlr/types/wlr_idle.h>
 };
 
+#include <gio/gio.h>
 #include <ctime>
 #include <iostream>
 #include <list>

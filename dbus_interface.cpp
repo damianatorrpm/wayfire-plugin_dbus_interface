@@ -8,11 +8,11 @@
 #define DBUS_PLUGIN_WARN TRUE
 
 extern "C" {
-#include <gio/gio.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 };
 
+#include <gio/gio.h>
 #include <algorithm>
 #include <charconv>
 #include <cmath>

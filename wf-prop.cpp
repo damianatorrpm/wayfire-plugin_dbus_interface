@@ -6,10 +6,7 @@
 #define DBUS_ID "org.wayland.compositor"
 #define DBUS_PATH "/org/wayland/compositor"
 
-extern "C" {
 #include <gio/gio.h>
-};
-
 #include <giomm/application.h>
 #include <giomm/dbusconnection.h>
 #include <giomm/dbusproxy.h>
