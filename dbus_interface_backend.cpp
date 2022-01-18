@@ -37,7 +37,6 @@ extern "C" {
 #include <wayfire/output-layout.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/plugin.hpp>
-#include <wayfire/plugins/common/view-change-viewport-signal.hpp>
 #include <wayfire/render-manager.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/util.hpp>

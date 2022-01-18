@@ -28,7 +28,6 @@ extern "C" {
 #include <wayfire/output-layout.hpp>
 #include <wayfire/output.hpp>
 #include <wayfire/plugin.hpp>
-#include <wayfire/plugins/common/view-change-viewport-signal.hpp>
 #include <wayfire/render-manager.hpp>
 #include <wayfire/signal-definitions.hpp>
 #include <wayfire/singleton-plugin.hpp>
@@ -89,7 +88,7 @@ class dbus_interface_t
 
             output->connect_signal("view-resize-request", &output_view_resizing);
 
-            output->connect_signal("view-change-viewport", &view_workspaces_changed);
+            output->connect_signal("view-change-workspace", &view_workspaces_changed);
 
             output->connect_signal("workspace-changed", &output_workspace_changed);
 
@@ -565,10 +564,10 @@ class dbus_interface_t
 #endif
 
             GVariant* signal_data;
-            view_change_viewport_signal* signal;
+            wf::view_change_workspace_signal* signal;
             wayfire_view view;
 
-            signal = static_cast<view_change_viewport_signal*> (data);
+            signal = static_cast<wf::view_change_workspace_signal*> (data);
             view = signal->view;
 
             if (!check_view_toplevel) {
