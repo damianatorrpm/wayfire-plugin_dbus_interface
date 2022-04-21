@@ -33,3 +33,6 @@ If one of the plugins isn't loaded (check wayfire's debug output), make sure the
 
 * To restore previous state from fullscreen
 >gdbus call --session --dest org.wayland.compositor --object-path /org/wayland/compositor --method org.wayland.compositor.fullscreen_view $id 0
+
+* To list all available methods and signals
+> dbus-send --session --type=method_call --print-reply --dest=org.wayland.compositor /org/wayland/compositor org.freedesktop.DBus.Introspectable.Introspect
